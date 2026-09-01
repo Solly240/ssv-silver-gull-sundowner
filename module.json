@@ -2,15 +2,40 @@
   "id": "ssv-silver-gull-sundowner",
   "title": "SSV Silver Gull — Sundowner Net",
   "description": "<p>The <strong>Sundowner Net</strong> — a pirate darknet run out of the casino-city on Sundowner, reachable from any terminal with a bad enough conscience. <strong>Press B</strong> to open it.</p><p>Four tabs. <em>Wallet</em> turns coin into Obols and back, at the house's spread. <em>Exchange</em> is a simulated stock market of eight listings that genuinely reacts to the state of the galaxy — including the party's own faction standing — where companies rise, crash, go under and are replaced. <em>Pit</em> is eight house games, half of them run off your character's ability checks. <em>Wire</em> is the news and rumour feed that leaks what is coming, mixed with plants and noise.</p><p>Each player gets a set number of trades and gambles per day; the GM advances the day.</p>",
-  "authors": [{ "name": "Solly240" }],
-  "version": "0.1.0",
-  "compatibility": { "minimum": "12", "verified": "14" },
+  "authors": [
+    {
+      "name": "Solly240"
+    }
+  ],
+  "version": "0.1.1",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "14"
+  },
   "socket": true,
-  "scripts": ["scripts/sundowner-render.js"],
-  "esmodules": ["scripts/sundowner.js"],
-  "languages": [{ "lang": "en", "name": "English", "path": "lang/en.json" }],
+  "scripts": [
+    "scripts/sundowner-render.js"
+  ],
+  "esmodules": [
+    "scripts/sundowner.js"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
   "relationships": {
-    "systems": [{ "id": "dnd5e", "type": "system", "compatibility": { "minimum": "3.0.0" } }],
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "3.0.0"
+        }
+      }
+    ],
     "recommends": [
       {
         "id": "ssv-silver-gull-shop",

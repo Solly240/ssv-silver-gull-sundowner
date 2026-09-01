@@ -1073,8 +1073,18 @@ async function previewDay() {
   await loadContent();
   const sec = getSecret();
   if (!sec.latent) {
-    sec.latent = S().initLatent(CONTENT, (rand() * 2 ** 31) >>> 0);
+    // No hidden model in THIS browser. Reseed it from the published board
+    // rather than from scratch, or advancing the day from a second GM seat
+    // would republish eight brand-new prices and the party's positions would
+    // be marked against a board that had silently jumped.
+    const st0 = getState();
+    sec.latent = st0.started && st0.market?.listings?.length
+      ? S().latentFromPublished(st0.market, CONTENT, (rand() * 2 ** 31) >>> 0)
+      : S().initLatent(CONTENT, (rand() * 2 ** 31) >>> 0);
     await setSecret(sec);
+    if (st0.started) {
+      ui.notifications?.info?.("Rebuilt the market model from the live board — prices carried over.");
+    }
   }
   let seed = (rand() * 2 ** 31) >>> 0;
   const show = async () => {

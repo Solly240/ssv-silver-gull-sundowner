@@ -284,6 +284,54 @@
   }
   S.initLatent = initLatent;
 
+  /**
+   * Rebuild a hidden model from the PUBLISHED board.
+   *
+   * The latent state lives in one GM's browser. If the day is advanced from a
+   * different browser or by a different GM user, there is no latent — and
+   * building a fresh one would republish eight brand-new prices, so the board
+   * the party had been trading would silently jump. This reseeds from what is
+   * already on the tape: same tickers, same prices, same history. Only the
+   * unobservable parts (fair value, momentum, health, the event schedule) are
+   * regenerated, and those converge again within a few days.
+   */
+  function latentFromPublished(published, content, seed) {
+    const base = initLatent(content, seed);
+    const byId = indexContent(content);
+    const live = (published && published.listings) || [];
+    if (!live.length) return base;
+    const lst = {};
+    for (const l of live) {
+      const c = byId.company[l.id];
+      if (!c) continue;
+      const px = Math.max(1, Math.round(l.price));
+      const hist = (l.hist || []).slice(-M.histCap);
+      lst[c.id] = {
+        price: px,
+        logFair: Math.log(px),
+        mom: 0,
+        health: healthFromBand(l.band),
+        frail: 0,
+        hist: hist.length ? hist : [px],
+        listedDay: l.listedDay || 0,
+      };
+    }
+    if (!Object.keys(lst).length) return base;
+    return {
+      ...base,
+      day: published.day || 0,
+      lst,
+      usedCompanies: Object.keys(lst),
+    };
+  }
+  S.latentFromPublished = latentFromPublished;
+
+  /** Best guess at hidden health from the band the players could already see. */
+  function healthFromBand(label) {
+    const i = HEALTH_BANDS.findIndex((b) => b.label === label);
+    return [0.75, 0.42, 0.20, 0.08][i < 0 ? 0 : i];
+  }
+
   function initSourceAccuracy(content, seed) {
     const out = {};
     for (const s of content.sources) {
@@ -2309,6 +2357,29 @@
       `blob ${Math.round(sweep.maxStateBytes / 1024)}KB`);
     notes.push(`${sweep.bigMovers30} of 8 listings move >20% in a typical month; ` +
       `over 100 days the best ran ${r2(sweep.maxRun100)}x and the worst fell to ${r2(sweep.worstRun100)}x`);
+
+    /* --- continuity when a second GM seat takes over ------------------- */
+    // Rebuilding from the tape must carry the prices over exactly, or the board
+    // jumps under the party's feet the first time the day is advanced from a
+    // different browser.
+    {
+      const l0 = initLatent(content, 4242);
+      const pub = publish(l0, content, { standingKnown: true });
+      const l1 = latentFromPublished(pub, content, 99);
+      const pub1 = publish(l1, content, { standingKnown: true });
+      ok(pub1.listings.length === pub.listings.length,
+         `reseed changed the board size (${pub.listings.length} -> ${pub1.listings.length})`);
+      for (const a of pub.listings) {
+        const b = pub1.listings.find((x) => x.id === a.id);
+        ok(b && b.price === a.price, `reseed moved ${a.ticker}: ${a.price} -> ${b && b.price}`);
+      }
+      // and a tick on the reseeded model must behave like any other day
+      const out = tickDay(l1, content, 777, {});
+      ok(out.published.listings.length >= M.minLive, "a tick after reseeding shrank the board");
+      for (const l of out.published.listings) {
+        ok(Number.isFinite(l.price) && l.price > 0, `reseeded tick produced a bad price for ${l.ticker}`);
+      }
+    }
 
     /* --- the leak audit: this is the test that protects the model ------ */
     ok(sweep.leaks.length === 0, `published state leaked private keys: ${sweep.leaks.join(", ")}`);

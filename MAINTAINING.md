@@ -144,6 +144,12 @@ start repeating inside a year.
 - **The preview must hide the panel with `style.display`, not the `hidden` attribute.**
   `renderPanel()` puts `.sgsun` on the element it is given, and that class carries `display:flex`,
   which outranks `[hidden]`.
+- **A second GM seat has no hidden model.** The latent state is per-browser, so advancing the day
+  from a different browser or GM user finds nothing. It reseeds from the published board via
+  `latentFromPublished()` so prices carry over exactly; only fair value, momentum, health and the
+  event schedule regenerate. Building a fresh latent instead would republish eight brand-new prices
+  and the party's positions would be marked against a board that had silently jumped. The selftest
+  asserts the reseed is price-identical.
 - **`game.settings.get` for `scope: "client"` is per-browser.** If the GM plays from a different
   machine without the vault passphrase, the pending schedule rerolls. Harmless, but say so rather
   than letting it look like a bug.

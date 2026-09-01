@@ -1391,9 +1391,12 @@
 /* ---- charts ---- */
 .sgsun .chart-wrap{position:relative;margin:2px 0 6px;}
 .sgsun .chart{display:block;width:100%;background:#040a10;border:1px solid #163b4e;border-radius:7px;}
-.sgsun .chart-ax{position:absolute;inset:4px 6px 4px auto;right:6px;display:flex;flex-direction:column;
-  justify-content:space-between;font-size:9px;color:#5b7a88;pointer-events:none;text-align:right;}
-.sgsun .chart-x{display:flex;justify-content:space-between;font-size:9px;color:#4f6b78;padding:2px 2px 0;}
+/* The range labels sit INSIDE the plot, clear of the x-axis row underneath —
+   flush to the bottom edge they collided with "now". */
+.sgsun .chart-ax{position:absolute;inset:5px 7px 14px auto;right:7px;display:flex;flex-direction:column;
+  justify-content:space-between;font-size:9px;color:#5b7a88;pointer-events:none;text-align:right;
+  text-shadow:0 0 4px #040a10,0 0 4px #040a10;}
+.sgsun .chart-x{display:flex;justify-content:space-between;font-size:9px;color:#4f6b78;padding:3px 2px 0;}
 .sgsun .chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;
   letter-spacing:1px;}
 .sgsun .chart-last{font-size:20px;font-weight:700;color:#cfeef0;font-variant-numeric:tabular-nums;}

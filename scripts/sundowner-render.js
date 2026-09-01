@@ -1493,6 +1493,16 @@
 .sgsun .vf.hot .vf-num{color:#f2b03d;text-shadow:0 0 30px rgba(242,176,61,.7);}
 .sgsun .vf.blown .vf-num{color:#e0454d;text-shadow:0 0 34px rgba(224,69,77,.8);}
 .sgsun .vf .vf-tag{position:absolute;left:8px;top:6px;font-size:10px;letter-spacing:2px;color:#4f6b78;}
+.sgsun .vf .vf-sub{position:absolute;left:0;right:0;top:calc(50% + 30px);text-align:center;
+  font-size:15px;letter-spacing:2px;color:#57d38c;font-variant-numeric:tabular-nums;pointer-events:none;
+  text-shadow:0 0 12px rgba(87,211,140,.45);}
+.sgsun .vf.hot .vf-sub{color:#f2b03d;text-shadow:0 0 12px rgba(242,176,61,.5);}
+/* ---- roulette: wheel one side, the table the other ---- */
+.sgsun .roul{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+.sgsun .roul-wheel{flex:1 1 340px;min-width:280px;display:flex;flex-direction:column;gap:4px;}
+.sgsun .roul-side{flex:1 1 300px;min-width:260px;display:flex;flex-direction:column;gap:9px;}
+.sgsun .roul .wheel-svg{max-width:none;width:100%;}
+@media (max-width:900px){.sgsun .roul{flex-direction:column;}}
 /* ---- ladder ---- */
 .sgsun .rung{transition:border-color .25s,color .25s,box-shadow .25s,transform .25s,opacity .25s;}
 .sgsun .rung.now{animation:sun-pulse 1.3s ease-in-out infinite;}
@@ -2022,7 +2032,7 @@
            `L${r2(x2)},${r2(y2)} A${r0},${r0} 0 ${big} 0 ${r2(x3)},${r2(y3)} Z`;
   }
   /** The wheel itself. `target` is the pocket to land on, or null for at rest. */
-  function rouletteWheel(target, settled) {
+  function rouletteWheel(target, settled, idleLabel) {
     const N = ROULETTE.pockets, cx = 110, cy = 110, r0 = 60, r1 = 100, step = 360 / N;
     let out = "";
     for (let i = 0; i < N; i++) {
@@ -2045,9 +2055,14 @@
           `style="${settled ? `transform:rotate(${r2(deg)}deg);transition:none` : "transform:rotate(0deg)"}">` +
           `${out}</g>` +
         `<circle class="wheel-hub" cx="110" cy="110" r="52" stroke-width="1"/>` +
-        `<text x="110" y="110" text-anchor="middle" dominant-baseline="central" font-size="26" ` +
-          `fill="${settled ? (target === 0 ? "#c98bff" : "#38e1c4") : "#20465a"}" font-weight="700">` +
-          `${settled ? (target === 0 ? "☒" : target) : "—"}</text>` +
+        (settled
+          ? `<text x="110" y="110" text-anchor="middle" dominant-baseline="central" font-size="28" ` +
+            `fill="${target === 0 ? "#c98bff" : "#38e1c4"}" font-weight="700">` +
+            `${target === 0 ? "☒" : target}</text>`
+          : `<text x="110" y="103" text-anchor="middle" dominant-baseline="central" font-size="8" ` +
+            `fill="#4f6b78" letter-spacing="1.4">YOU ARE ON</text>` +
+            `<text x="110" y="118" text-anchor="middle" dominant-baseline="central" font-size="13" ` +
+            `fill="#38e1c4" font-weight="700">${esc(idleLabel || "—")}</text>`) +
         `<path class="wheel-mark" d="M101,2 L119,2 L110,19 Z"/>` +
       `</svg>` +
     `</div>`;
@@ -2084,6 +2099,13 @@
     // often than the panel redraws, so it used to read BUY-IN OPEN throughout.
     const tag = root.querySelector(".vf-tag");
     if (tag) tag.textContent = vfTag(live);
+    // What you would walk away with right now, ticking with the number above it.
+    const sub = root.querySelector(".vf-sub");
+    if (sub) {
+      sub.textContent = live.in && !live.blown
+        ? fmtOb(Math.floor((live.stake || 0) * m))
+        : "";
+    }
     if (live.state === "run" || live.blown) {
       S._vfCurve.push(m);
       if (S._vfCurve.length > 240) S._vfCurve.shift();
@@ -2286,6 +2308,7 @@
               `stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
           `</svg>` +
           `<div class="vf-num">${blown ? "GONE" : "×" + mult.toFixed(2)}</div>` +
+          `<div class="vf-sub">${raw?.in && !blown ? fmtOb(Math.floor((raw.stake || 0) * mult)) : ""}</div>` +
         `</div>` +
         (raw?.state === "open" && !blown
           ? `<div class="sun-note">Buy-in closes in <b>${raw.countdown ?? 0}</b>…</div>` : "") +
@@ -2294,10 +2317,16 @@
             `<span class="sub">out at ×${(raw.outAt || 1).toFixed(2)}` +
             `${blown ? ` — it blew at ×${mult.toFixed(2)}` : ", and it is still climbing"}</span></div>`
           : blown && raw?.wasIn
-          ? `<div class="verdict lose pop">GONE<span class="sub">it blew at ×${mult.toFixed(2)} ` +
-            `with you still on it</span></div>`
+          ? `<div class="verdict lose pop">LOST<span class="sub">it blew at ×${mult.toFixed(2)} ` +
+            `with you still on it — ${fmtOb(raw.stake || 0)} gone</span></div>`
+          : blown
+          ? `<div class="verdict pop" style="color:#6f97a6">ROUND OVER` +
+            `<span class="sub">it blew at ×${mult.toFixed(2)}</span></div>`
           : "") +
-        (raw?.in
+        (blown
+          ? `<div class="sun-row" style="justify-content:center">` +
+            `<button class="sun-btn hot" data-act="again">NEW ROUND</button></div>`
+          : raw?.in
           ? `<div class="sun-row"><button class="sun-btn buy" data-act="play" data-g="voidfall" data-step="out">` +
             `TAKE ${fmtOb(Math.floor((raw.stake || 0) * mult))}</button></div>`
           : locked
@@ -2314,32 +2343,43 @@
 
     if (g.id === "roulette") {
       const bet = S._roul || { key: "rift", arg: null };
+      const betLabel = (b) => b.key === "single"
+        ? `NUMBER ${b.arg}`
+        : ({ rift: "RIFT", voidc: "VOID", low: "1–18", high: "19–36",
+             dozen1: "1ST 12", dozen2: "2ND 12", dozen3: "3RD 12" }[b.key] || "—");
       const spun = raw && raw.pocket != null;
       const settled = spun && S._revealDone;
       const nums = Array.from({ length: 37 }, (_, i) => i);
       return `<div class="sun-card accent${settled && raw.pocket === 0 ? " flash-void" : settled && raw.win ? " flash-good" : ""}">` +
-        head + rouletteWheel(spun ? raw.pocket : null, settled) +
-        (settled
-          ? `<div class="verdict ${raw.pocket === 0 ? "void" : raw.win ? "win" : "lose"} pop">` +
-            `${raw.pocket === 0 ? "THE HOLLOW" : raw.win ? "PAID " + fmtOb(raw.payoutOb) : "NOTHING"}` +
-            `<span class="sub">${raw.pocket === 0
-              ? "It does not pay. It takes the table."
-              : "Pocket " + raw.pocket}</span></div>`
-          : spun ? `<div class="sun-note" style="text-align:center">spinning…</div>` : "") +
-        `<div class="sun-note">Thirty-seven pockets. <b style="color:#c98bff">Pocket 0 is the Hollow</b>, and ` +
-        `the Hollow does not pay — it takes the table.</div>` +
-        stakeBox(100, left, lim) +
-        `<div class="sun-row">` + [
-          ["rift", "RIFT (odd) 1:1"], ["voidc", "VOID (even) 1:1"], ["low", "1–18"], ["high", "19–36"],
-          ["dozen1", "1st 12 · 2:1"], ["dozen2", "2nd 12 · 2:1"], ["dozen3", "3rd 12 · 2:1"],
-        ].map(([k, l]) => `<button class="sun-btn${bet.key === k ? " hot" : ""}" data-act="roulbet" data-k="${k}">${l}</button>`).join("") +
+        head +
+        `<div class="roul">` +
+          `<div class="roul-wheel">` +
+            rouletteWheel(spun ? raw.pocket : null, settled, betLabel(bet)) +
+            (settled
+              ? `<div class="verdict ${raw.pocket === 0 ? "void" : raw.win ? "win" : "lose"} pop">` +
+                `${raw.pocket === 0 ? "THE HOLLOW" : raw.win ? "PAID " + fmtOb(raw.payoutOb) : "LOST"}` +
+                `<span class="sub">${raw.pocket === 0
+                  ? "It does not pay. It takes the table."
+                  : "Pocket " + raw.pocket}</span></div>`
+              : spun ? `<div class="sun-note" style="text-align:center">spinning…</div>` : "") +
+          `</div>` +
+          `<div class="roul-side">` +
+            `<div class="sun-note">Thirty-seven pockets. <b style="color:#c98bff">Pocket 0 is the Hollow</b>, ` +
+            `and the Hollow does not pay — it takes the table.</div>` +
+            stakeBox(100, left, lim) +
+            `<div class="sun-row">` + [
+              ["rift", "RIFT (odd) 1:1"], ["voidc", "VOID (even) 1:1"], ["low", "1–18"], ["high", "19–36"],
+              ["dozen1", "1st 12 · 2:1"], ["dozen2", "2nd 12 · 2:1"], ["dozen3", "3rd 12 · 2:1"],
+            ].map(([k, l]) => `<button class="sun-btn${bet.key === k ? " hot" : ""}" data-act="roulbet" data-k="${k}">${l}</button>`).join("") +
+            `</div>` +
+            `<div class="wheel">` + nums.map((n) =>
+              `<div class="pk${n === 0 ? " hollow" : ""}${bet.key === "single" && Number(bet.arg) === n ? " on" : ""}" ` +
+              `data-act="roulnum" data-n="${n}">${n === 0 ? "☒" : n}</div>`).join("") + `</div>` +
+            `<div class="sun-note">Single number pays 35:1.</div>` +
+            `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="roulette"` +
+              `${left <= 0 || revealing() ? " disabled" : ""}>${revealing() ? "SPINNING…" : "SPIN"}</button></div>` +
+          `</div>` +
         `</div>` +
-        `<div class="wheel">` + nums.map((n) =>
-          `<div class="pk${n === 0 ? " hollow" : ""}${bet.key === "single" && Number(bet.arg) === n ? " on" : ""}" ` +
-          `data-act="roulnum" data-n="${n}">${n === 0 ? "☒" : n}</div>`).join("") + `</div>` +
-        `<div class="sun-note">Single number pays 35:1.</div>` +
-        `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="roulette"` +
-          `${left <= 0 || revealing() ? " disabled" : ""}>${revealing() ? "SPINNING…" : "SPIN"}</button></div>` +
       `</div>`;
     }
 
@@ -2614,7 +2654,9 @@
       const act = el.dataset.act;
       switch (act) {
         case "close": return A.close?.();
-        case "again": S._live = null; S._revealKey = null; S._revealDone = true; return A.rerender?.();
+        case "again":
+          S._live = null; S._revealKey = null; S._revealDone = true; S._vfCurve = [];
+          return A.rerender?.();
         case "advance": return A.advanceDay?.();
         case "buyin": return A.buyIn?.(Math.max(OBOL.minLot, num("buyin", 100)));
         case "cashout": return A.cashOut?.(Math.max(OBOL.minLot, num("cashout", 100)));

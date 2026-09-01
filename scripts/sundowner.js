@@ -1012,10 +1012,9 @@ function clientCrashBlown(msg) {
   }
   paintCrash();
   refresh();
-  // Long enough to read the verdict, then the table is clear for the next round.
-  setTimeout(() => {
-    if (S()._live?.game === "voidfall" && S()._live.blown) { S()._live = null; S()._vfCurve = []; refresh(); }
-  }, 5000);
+  // Deliberately no auto-clear: the verdict stays up until the player presses
+  // NEW ROUND. Wiping it after a few seconds meant a bust could vanish before
+  // you had finished reading what it cost you.
 }
 
 async function gmCrashJoin(uid, stakeOb) {

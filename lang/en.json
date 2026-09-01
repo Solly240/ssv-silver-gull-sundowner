@@ -1,0 +1,15 @@
+{
+  "ssv-silver-gull-sundowner.keybind.open.name": "Open the Sundowner Net",
+  "ssv-silver-gull-sundowner.keybind.open.hint": "Opens the black-market terminal: wallet, exchange, pit and wire.",
+  "ssv-silver-gull-sundowner.control.title": "Sundowner Net",
+  "ssv-silver-gull-sundowner.settings.netOpen.name": "The Net is up",
+  "ssv-silver-gull-sundowner.settings.netOpen.hint": "Master switch. Turn it off to cut the crew's access — a blockade, a crackdown, or simply being too far out.",
+  "ssv-silver-gull-sundowner.settings.playerAccess.name": "Players can open the terminal",
+  "ssv-silver-gull-sundowner.settings.playerAccess.hint": "When off, only the GM can open it. The GM can still show it to the table.",
+  "ssv-silver-gull-sundowner.settings.tradesPerDay.name": "Trades per player per day",
+  "ssv-silver-gull-sundowner.settings.tradesPerDay.hint": "Buying in and cashing out do not count. A resting order costs a slot on the day it fills, not the day you place it.",
+  "ssv-silver-gull-sundowner.settings.gamblesPerDay.name": "Plays per player per day",
+  "ssv-silver-gull-sundowner.settings.gamblesPerDay.hint": "One play is one bet. Climbing a rung of the Ladder or taking another hand is not a new play.",
+  "ssv-silver-gull-sundowner.settings.driveShopRestock.name": "Advancing the day restocks the shops",
+  "ssv-silver-gull-sundowner.settings.driveShopRestock.hint": "Fires a day-advanced hook the shop module can listen for, so one button moves the whole economy."
+}

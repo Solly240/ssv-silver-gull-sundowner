@@ -217,6 +217,7 @@
     healSect: 0.008,
     healDeadBelow: 0.04,
     healDeadDays: 2,
+    delistBelowPx: 10,   // a stock that has lost this much is delisted, not left trading at 1
     liqMax: 0.15,
     // death cadence policing
     droughtDays: 20,
@@ -238,6 +239,10 @@
   };
   S.M = M;
 
+  /** A z-score index as the 0-100 gauge the players see. */
+  const gaugeOf = (z) => Math.round(clamp(((z || 0) + M.idxClamp) / (2 * M.idxClamp), 0, 1) * 100);
+  S.gaugeOf = gaugeOf;
+
   const dot = (beta, d) => {
     let t = 0;
     for (const k in beta) t += (beta[k] || 0) * (d[k] || 0);
@@ -256,7 +261,11 @@
     }
     const mu = indexTargets(fac, {});
     const idx = {};
-    for (const m of content.indices) idx[m.id] = (mu[m.id] || 0) + 0.35 * gauss(rnd);
+    const idxHist = {};
+    for (const m of content.indices) {
+      idx[m.id] = (mu[m.id] || 0) + 0.35 * gauss(rnd);
+      idxHist[m.id] = [gaugeOf(idx[m.id])];
+    }
     // Baseline conditions, with the party at neutral standing everywhere. The
     // level tilt is measured against THIS, so a permanently belligerent galaxy
     // is priced in and only real change moves fair value.
@@ -275,7 +284,7 @@
       };
     }
     return {
-      day: 0, idx, sect, fac, lst, baseMu,
+      day: 0, idx, sect, fac, lst, baseMu, idxHist,
       sched: [], rum: {}, srcAcc: initSourceAccuracy(content, seed),
       pump: null, lastDeath: 0, lastDeathAt: -999,
       ipoQueue: [], usedCompanies: live.map((c) => c.id),
@@ -317,10 +326,16 @@
       };
     }
     if (!Object.keys(lst).length) return base;
+    const idxHist = { ...(base.idxHist || {}) };
+    for (const k in (published.indexHist || {})) {
+      const h = published.indexHist[k];
+      if (h && h.length) idxHist[k] = h.slice(-M.histCap);
+    }
     return {
       ...base,
       day: published.day || 0,
       lst,
+      idxHist,
       usedCompanies: Object.keys(lst),
     };
   }
@@ -543,13 +558,19 @@
       // day both saw a stale flag when this was hoisted, and the board emptied.
       const clustered = day - (L.lastDeathAt || -999) < M.clusterDays;
       const ln = L.lst[id];
-      const catastrophic = (shockHealth[id] || 0) >= 0.5;
+      // A price floor delisting is as unstoppable as a catastrophe: without it a
+      // dying listing kept decaying and eventually pinned to the price clamp,
+      // trading at 1 OB with a spread that rounds to nothing.
+      const collapsed = ln.price <= M.delistBelowPx;
+      const catastrophic = (shockHealth[id] || 0) >= 0.5 || collapsed;
       if (ln.health < M.healDeadBelow) ln.frail = (ln.frail || 0) + 1; else ln.frail = 0;
       const doomed = catastrophic || ln.frail >= M.healDeadDays;
       if (!doomed) continue;
       if (clustered && !catastrophic) { ln.health = M.healDeadBelow + 0.02; ln.frail = 0; continue; }
       const rnd = stream(seed, "die:" + id + ":" + day);
-      const frac = clamp(M.liqMax * (ln.health / M.healDeadBelow) + 0.02 * gauss(rnd), 0, M.liqMax);
+      const frac = collapsed
+        ? clamp(0.02 + 0.03 * rnd(), 0, M.liqMax)          // wiped out: pennies, if that
+        : clamp(M.liqMax * (ln.health / M.healDeadBelow) + 0.02 * gauss(rnd), 0, M.liqMax);
       deaths.push({
         id, ticker: byId.company[id]?.ticker || id, name: byId.company[id]?.name || id,
         day, lastClose: ln.price, payoutFrac: r2(frac),
@@ -586,7 +607,11 @@
     });
     // Never let the board fall below the minimum: an eight-line exchange with
     // five lines on it reads as broken, not as dramatic.
-    while (Object.keys(L.lst).length < M.minLive) {
+    //
+    // Counting the QUEUED successors matters. Without that, a death both queued
+    // its heir and tripped this top-up, so two companies listed where one had
+    // died and the board crept up to nine and beyond over a long campaign.
+    while (Object.keys(L.lst).length + L.ipoQueue.length < M.minLive) {
       const rnd = stream(seed, "fill:" + Object.keys(L.lst).length + ":" + day);
       const heir = pickSuccessor(null, content, L, rnd);
       if (!heir) break;
@@ -673,6 +698,10 @@
       });
     }
 
+    L.idxHist = L.idxHist || {};
+    for (const k in idx) {
+      L.idxHist[k] = (L.idxHist[k] || []).concat([gaugeOf(idx[k])]).slice(-M.histCap);
+    }
     L.day = day; L.idx = idx; L.sect = sect; L.fac = fac;
 
     return {
@@ -756,12 +785,13 @@
       });
     }
     listings.sort((a, b) => a.ticker.localeCompare(b.ticker));
-    const indices = {};
+    const indices = {}, indexHist = {};
     for (const m of content.indices) {
-      indices[m.id] = Math.round(clamp((L.idx[m.id] + M.idxClamp) / (2 * M.idxClamp), 0, 1) * 100);
+      indices[m.id] = gaugeOf(L.idx[m.id]);
+      indexHist[m.id] = ((L.idxHist || {})[m.id] || [indices[m.id]]).slice(-M.histCap);
     }
     return {
-      day: L.day, listings, indices,
+      day: L.day, listings, indices, indexHist,
       standingKnown: !!(meta && meta.standingKnown),
       ipoQueue: L.ipoQueue.map((q) => ({ day: q.day })),   // the WHEN is public, the WHO is not
     };
@@ -1358,6 +1388,18 @@
 .sgsun .up{color:#57d38c;}.sgsun .dn{color:#e0454d;}.sgsun .flat{color:#6f97a6;}
 .sgsun .band{font-size:10px;letter-spacing:1px;padding:2px 6px;border-radius:5px;border:1px solid currentColor;}
 .sgsun .spark{display:block;}
+/* ---- charts ---- */
+.sgsun .chart-wrap{position:relative;margin:2px 0 6px;}
+.sgsun .chart{display:block;width:100%;background:#040a10;border:1px solid #163b4e;border-radius:7px;}
+.sgsun .chart-ax{position:absolute;inset:4px 6px 4px auto;right:6px;display:flex;flex-direction:column;
+  justify-content:space-between;font-size:9px;color:#5b7a88;pointer-events:none;text-align:right;}
+.sgsun .chart-x{display:flex;justify-content:space-between;font-size:9px;color:#4f6b78;padding:2px 2px 0;}
+.sgsun .chart-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11px;
+  letter-spacing:1px;}
+.sgsun .chart-last{font-size:20px;font-weight:700;color:#cfeef0;font-variant-numeric:tabular-nums;}
+.sgsun .cond{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+.sgsun .cond-h{display:flex;justify-content:space-between;font-size:10px;letter-spacing:1px;color:#6f97a6;}
+.sgsun .cond-h b{color:#cfeef0;}
 .sgsun tr.dead td{opacity:.5;}
 .sgsun tr.dead .tick{color:#6f97a6;text-decoration:line-through;}
 /* ---- wire ---- */
@@ -1448,6 +1490,53 @@
            `stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
   S.sparkline = sparkline;
+
+  /**
+   * A proper line chart. The sparkline is fine in a table row; a listing you are
+   * about to put money into deserves axes and a range.
+   *
+   * opts: {domain:[lo,hi]} to pin the scale (conditions are always 0-100),
+   *       {colour}, {fmt} for the axis labels, {zero} to draw a midline.
+   */
+  function chart(series, w, h, opts) {
+    const o = opts || {};
+    const a = (series || []).filter((n) => Number.isFinite(n));
+    if (a.length < 2) {
+      return `<svg class="chart" width="100%" height="${h}" viewBox="0 0 ${w} ${h}" ` +
+        `preserveAspectRatio="none"></svg>`;
+    }
+    let lo = o.domain ? o.domain[0] : Math.min(...a);
+    let hi = o.domain ? o.domain[1] : Math.max(...a);
+    if (hi - lo < 1e-9) { hi = lo + 1; }
+    if (!o.domain) { const pad = (hi - lo) * 0.12; lo -= pad; hi += pad; }
+    const pad = { l: 0, r: 0, t: 4, b: 4 };
+    const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+    const x = (i) => pad.l + (i / (a.length - 1)) * iw;
+    const y = (v) => pad.t + ih - ((v - lo) / (hi - lo)) * ih;
+    const line = a.map((v, i) => `${r2(x(i))},${r2(y(v))}`).join(" ");
+    const up = a[a.length - 1] >= a[0];
+    const c = o.colour || (up ? "#57d38c" : "#e0454d");
+    const uid = "g" + Math.abs(hashStr(String(w) + a.length + a[0] + a[a.length - 1] + (o.colour || "")));
+    const area = `${r2(x(0))},${r2(pad.t + ih)} ${line} ${r2(x(a.length - 1))},${r2(pad.t + ih)}`;
+    const grid = [0.25, 0.5, 0.75].map((f) =>
+      `<line x1="0" x2="${w}" y1="${r2(pad.t + ih * f)}" y2="${r2(pad.t + ih * f)}" ` +
+      `stroke="#12455a" stroke-width="0.5" stroke-dasharray="2 4"/>`).join("");
+    const fmt = o.fmt || ((n) => Math.round(n).toLocaleString());
+    return `<div class="chart-wrap">` +
+      `<svg class="chart" width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">` +
+        `<defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">` +
+          `<stop offset="0%" stop-color="${c}" stop-opacity="0.28"/>` +
+          `<stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>` +
+        grid +
+        `<polygon points="${area}" fill="url(#${uid})"/>` +
+        `<polyline points="${line}" fill="none" stroke="${c}" stroke-width="1.6" ` +
+          `stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
+      `</svg>` +
+      `<div class="chart-ax"><span>${esc(fmt(hi))}</span><span>${esc(fmt(lo))}</span></div>` +
+      `<div class="chart-x"><span>${a.length} days ago</span><span>now</span></div>` +
+    `</div>`;
+  }
+  S.chart = chart;
 
   function gauge(label, value, colour) {
     const v = clamp(Number(value) || 0, 0, 100);
@@ -1602,8 +1691,15 @@
     const sel = mk.listings.find((l) => l.id === S._sel) || null;
     const tradesLeft = Math.max(0, (cfg.tradesPerDay ?? 5) - (me.trades || 0));
 
-    const idxRow = Object.entries(mk.indices || {}).map(([k, v]) =>
-      gauge(INDEX_LABEL[k] || k, v, INDEX_COLOUR[k])).join("");
+    const idxRow = Object.entries(mk.indices || {}).map(([k, v]) => {
+      const h = (mk.indexHist || {})[k] || [v];
+      const d = h.length > 1 ? v - h[Math.max(0, h.length - 15)] : 0;
+      return `<div class="cond">` +
+        `<div class="cond-h"><span>${esc(INDEX_LABEL[k] || k)}</span>` +
+          `<span class="num"><b>${v}</b> <span class="${cls(d)}">${arrow(d)} ${Math.abs(Math.round(d))}</span></span></div>` +
+        chart(h, 240, 46, { domain: [0, 100], colour: INDEX_LINE[k], fmt: (n) => Math.round(n) }) +
+      `</div>`;
+    }).join("");
 
     const rows = mk.listings.map((l) => {
       const d = pct(l.price, l.prev);
@@ -1671,6 +1767,8 @@
   const INDEX_COLOUR = { war: "linear-gradient(90deg,#5c1b1f,#e0454d)", rift: "linear-gradient(90deg,#3d1b5c,#c98bff)",
     trade: "linear-gradient(90deg,#1d6a86,#38e1c4)", law: "linear-gradient(90deg,#5c4416,#f2b03d)",
     relic: "linear-gradient(90deg,#1b5c3d,#57d38c)" };
+  const INDEX_LINE = { war: "#e0454d", rift: "#c98bff", trade: "#38e1c4", law: "#f2b03d", relic: "#57d38c" };
+  S.INDEX_LINE = INDEX_LINE;
   S.INDEX_LABEL = INDEX_LABEL;
 
   function tradeTicket(l, ctx, tradesLeft) {
@@ -1681,8 +1779,15 @@
     const qb = quote(l, "buy", qty, ctx.cfg);
     const qs = quote(l, "sell", Math.min(qty, pos.qty || qty), ctx.cfg);
     const canAfford = Math.floor((me.ob || 0) / Math.max(1, qb.unitOb));
+    const h = l.hist || [l.price];
+    const d30 = h.length > 1 ? pct(l.price, h[Math.max(0, h.length - 31)]) : 0;
     return `<div class="sun-card accent">` +
       `<div class="sun-h">${esc(l.ticker)} — ${esc(l.name)}</div>` +
+      `<div class="chart-head">` +
+        `<span class="chart-last">${l.price.toLocaleString()} <span class="co">ØB</span></span>` +
+        `<span class="${cls(d30)}">${arrow(d30)} ${r2(Math.abs(d30))}% over ${Math.min(30, h.length - 1)}d</span>` +
+      `</div>` +
+      chart(h, 320, 92) +
       `<div class="sun-note">${esc(l.blurb || "")}</div>` +
       `<div class="sun-row" style="align-items:center;gap:8px">` +
         `<span class="sun-note">${esc(l.sectorName)}</span>` +
@@ -2016,18 +2121,34 @@
     `</div>`;
 
   function gmWallet(ctx) {
+    const users = ctx.users || [];
     return cog("wallet", "GM — ACCOUNTS",
       `<div class="sun-row" style="align-items:center">` +
         `<select class="sun-in" data-in="gmuser" style="width:170px">` +
-          (ctx.users || []).map((u) => `<option value="${esc(u.id)}">${esc(u.name)}</option>`).join("") +
+          users.map((u) => `<option value="${esc(u.id)}"${u.id === ctx.userId ? " selected" : ""}>` +
+            `${esc(u.name)}${u.id === ctx.userId ? " (you)" : ""}</option>`).join("") +
         `</select>` +
         `<input class="sun-in" type="number" value="1000" data-in="gmob" style="width:96px">` +
         `<button class="cog" data-act="gmgrant">GRANT ØB</button>` +
         `<input class="sun-in" type="number" value="0" min="0" max="100" data-in="gmheat" style="width:74px">` +
         `<button class="cog" data-act="gmheat">SET HEAT</button>` +
-        `<button class="cog" data-act="gmresetcounters">RESET TODAY'S SLOTS</button>` +
       `</div>` +
-      `<div class="sun-note">Grants and Heat are absolute, not offers. The player is told.</div>`);
+      `<div class="sun-note">Grants and Heat are absolute, not offers. The player is told. ` +
+      `You have no purse of your own, so pay yourself here to test with.</div>` +
+      `<div class="sun-h" style="margin-top:6px">TESTING</div>` +
+      `<div class="sun-row" style="align-items:center">` +
+        `<button class="cog" data-act="gmpayme">PAY ME 5,000 ØB</button>` +
+        `<button class="cog" data-act="gmresetcounters">RESET TODAY'S SLOTS</button>` +
+        `<button class="cog" data-act="gmwipeuser">WIPE THE SELECTED ACCOUNT</button>` +
+      `</div>` +
+      `<div class="sun-row" style="align-items:center">` +
+        `<button class="cog" data-act="gmwipeall">WIPE EVERY ACCOUNT</button>` +
+        `<button class="cog" data-act="gmreseed">RESEED THE WHOLE BOARD</button>` +
+      `</div>` +
+      `<div class="sun-note">Wiping clears Obols, positions, orders, Heat and the ledger for that ` +
+      `account — the clean way to tidy up after a test run. <b>Reseeding</b> throws away the market ` +
+      `and generates a fresh one with a fresh history; everyone's holdings are cleared too, since ` +
+      `they would be shares in companies that no longer exist.</div>`);
   }
 
   function gmExchange(ctx) {
@@ -2066,10 +2187,23 @@
   }
 
   function gmPit(ctx) {
+    const tm = ctx.testMod;
     return cog("pit", "GM — THE CAGE",
-      `<div class="sun-note">Payout tables are fixed in the module so nobody can argue with them mid-hand. ` +
-      `If you want a game to go a particular way, say so out loud and skip the roll — that always beats ` +
-      `quietly rigging a number the players can see.</div>` +
+      `<div class="sun-note">Payout tables are fixed in the module so nobody can argue with them ` +
+      `mid-hand. If you want a game to go a particular way, say so out loud and skip the roll — that ` +
+      `always beats quietly rigging a number the players can see.</div>` +
+      `<div class="sun-h" style="margin-top:6px">PLAY IT YOURSELF</div>` +
+      `<div class="sun-row" style="align-items:center">` +
+        `<span class="sun-note">Pretend ability modifier</span>` +
+        `<input class="sun-in" type="number" value="${tm == null ? 5 : tm}" data-in="gmtestmod" style="width:74px">` +
+        `<button class="cog" data-act="gmtestmod">${tm == null ? "TURN ON" : "UPDATE"}</button>` +
+        (tm == null ? "" : `<button class="cog" data-act="gmtestmodoff">TURN OFF</button>`) +
+      `</div>` +
+      `<div class="sun-note">${tm == null
+        ? "You have no character assigned, so the check games have nothing to roll against. Set a " +
+          "pretend modifier and the terminal will roll it for you — odds, DCs and payouts all behave " +
+          "exactly as they would for a player with that modifier."
+        : `Rolling every check at <b>${tm >= 0 ? "+" : ""}${tm}</b>. Turn it off when you are done testing.`}</div>` +
       `<div class="sun-row"><button class="cog" data-act="gmnewcard">NEW FIGHT CARD</button></div>`);
   }
 
@@ -2129,6 +2263,12 @@
         case "gmgrant": return A.gm?.grant?.(str("gmuser"), num("gmob", 0));
         case "gmheat": return A.gm?.setHeat?.(str("gmuser"), num("gmheat", 0));
         case "gmresetcounters": return A.gm?.resetCounters?.();
+        case "gmpayme": return A.gm?.grant?.(ctx.userId, 5000);
+        case "gmwipeuser": return A.gm?.wipeUser?.(str("gmuser"));
+        case "gmwipeall": return A.gm?.wipeAll?.();
+        case "gmreseed": return A.gm?.reseedBoard?.();
+        case "gmtestmod": return A.gm?.setTestMod?.(num("gmtestmod", 5));
+        case "gmtestmodoff": return A.gm?.setTestMod?.(null);
         case "gmshock": return A.gm?.shock?.(str("gmticker"), num("gmshock", 0));
         case "gmkill": return A.gm?.kill?.(str("gmticker"));
         case "gmheadline": return A.gm?.headline?.(str("gmheadline"));
@@ -2346,7 +2486,10 @@
        `one listing ran ${r2(sweep.maxRun100)}x in 100 days — something is compounding without a brake`);
     ok(!sweep.pinned, "a listing hit the price clamp");
     ok(!sweep.nan, "the model produced a NaN or a non-positive price");
-    ok(sweep.minLive >= M.minLive, `the board fell to ${sweep.minLive} listings`);
+    ok(sweep.starvedDays === 0,
+       `the board sat below ${M.minLive} listings for ${sweep.starvedDays} days with no successor queued`);
+    ok(sweep.maxLive <= M.minLive,
+       `the board grew to ${sweep.maxLive} listings — it should never exceed ${M.minLive}`);
     ok(sweep.rumourTrueFrac > 0.35 && sweep.rumourTrueFrac < 0.75,
        `${Math.round(sweep.rumourTrueFrac * 100)}% of rumours were true`);
     ok(sweep.maxStateBytes < 250000, `the public blob reached ${sweep.maxStateBytes} bytes`);
@@ -2354,7 +2497,7 @@
       `(mean gap ${Math.round(sweep.deathGapMean)}d), |corr| ${r2(sweep.meanAbsCorr)} ` +
       `[${r2(sweep.minCorr)}..${r2(sweep.maxCorr)}], ` +
       `${Math.round(sweep.rumourTrueFrac * 100)}% of resolved rumours true, ` +
-      `blob ${Math.round(sweep.maxStateBytes / 1024)}KB`);
+      `blob ${Math.round(sweep.maxStateBytes / 1024)}KB, board ${sweep.minLive}-${sweep.maxLive} listings`);
     notes.push(`${sweep.bigMovers30} of 8 listings move >20% in a typical month; ` +
       `over 100 days the best ran ${r2(sweep.maxRun100)}x and the worst fell to ${r2(sweep.worstRun100)}x`);
 
@@ -2390,7 +2533,7 @@
 
   /** The public projection may only ever contain these keys. */
   const PUBLIC_KEYS = new Set([
-    "day", "listings", "indices", "standingKnown", "ipoQueue",
+    "day", "listings", "indices", "indexHist", "standingKnown", "ipoQueue",
     "id", "ticker", "name", "sector", "sectorName", "blurb", "price", "prev", "band",
     "depth", "hist", "listedDay",
     // the five index gauges are deliberately public — players should be able to
@@ -2419,7 +2562,7 @@
     let latent = initLatent(content, seed);
     const rets = [];
     const series = {};
-    let deaths = 0, nan = false, pinned = false, minLive = 99;
+    let deaths = 0, nan = false, pinned = false, minLive = 99, maxLive = 0, starvedDays = 0;
     let rumours = 0, resolvedN = 0, resolvedTrue = 0, maxStateBytes = 0;
     const deathDays = [];
     const leaks = new Set();
@@ -2430,7 +2573,12 @@
       for (const k of auditPublished(out.published)) leaks.add(k);
       const bytes = JSON.stringify(out.published).length;
       if (bytes > maxStateBytes) maxStateBytes = bytes;
-      minLive = Math.min(minLive, out.published.listings.length);
+      const nLive = out.published.listings.length;
+      minLive = Math.min(minLive, nLive);
+      maxLive = Math.max(maxLive, nLive);
+      // A short dip is correct: a company is delisted and its successor lists
+      // one to three days later. A dip with NOTHING queued is the real fault.
+      if (nLive < M.minLive && !(out.published.ipoQueue || []).length) starvedDays++;
       for (const l of out.published.listings) {
         if (!Number.isFinite(l.price) || l.price <= 0) nan = true;
         if (l.price <= M.priceMin || l.price >= M.priceMax) pinned = true;
@@ -2491,7 +2639,7 @@
     const maxRun100 = rel.length ? rel[rel.length - 1] : 1;
     const worstRun100 = rel.length ? rel[0] : 1;
     return {
-      medAbsRet, deaths, nan, pinned, minLive, maxStateBytes,
+      medAbsRet, deaths, nan, pinned, minLive, maxLive, starvedDays, maxStateBytes,
       deathGapMean: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : (days / Math.max(1, deaths)),
       meanCorr: cn ? cs / cn : 0,
       meanAbsCorr: cn ? cAbs / cn : 0,

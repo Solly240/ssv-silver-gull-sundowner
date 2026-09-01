@@ -30,6 +30,7 @@ const SET_SECRET = "secret";          // client scope — the GM's browser only
 const SET_VAULT = "secretVault";      // world scope — ciphertext only
 const SET_PASS = "vaultPass";         // client scope — never written anywhere else
 const SET_BANDS = "bands";            // client scope — what *I* have read
+const SET_TESTMOD = "testMod";        // client scope — the GM's pretend ability modifier
 
 const S = () => globalThis.SSVSUN;
 const D2 = () => foundry.applications?.api?.DialogV2;
@@ -65,6 +66,7 @@ const DEFAULT_CONFIG = {
   sellCpPer100: 980,
   driveShopRestock: true,
   playerAccess: true,
+  burnInDays: 90,
 };
 
 const getState = () => (_cState ??= normalizeState(game.settings.get(MODULE_ID, SET_STATE)));
@@ -240,10 +242,21 @@ function refresh() {
 }
 
 /** Ability modifiers for the games, so the panel can quote honest odds. */
+const testMod = () => {
+  const v = Number(game.settings.get(MODULE_ID, SET_TESTMOD));
+  return Number.isFinite(v) ? v : null;
+};
+/** A GM testing without a character rolls against a pretend modifier instead. */
+const gmTestMod = () => (game.user.isGM && !myActor() ? testMod() : null);
+
 function myMods() {
   const a = myActor();
   const out = {};
-  if (!a) return out;
+  if (!a) {
+    const t = gmTestMod();
+    if (t != null) for (const ab of ["int", "wis", "cha", "dex", "str", "con"]) out[ab] = t;
+    return out;
+  }
   const SKILL_FOR = { int: "inv", wis: "prc", cha: "dec", dex: "slt" };
   for (const abil of ["int", "wis", "cha", "dex", "str", "con"]) {
     const mod = Number(a.system?.abilities?.[abil]?.mod);
@@ -274,6 +287,7 @@ function draw() {
     purseLabel: myActor()?.name || "no character assigned",
     users: game.users.filter((u) => u.active || !u.isGM).map((u) => ({ id: u.id, name: u.name })),
     fightCard: st.fightCard || null,
+    testMod: testMod(),
     actions: ACTIONS,
   });
 }
@@ -387,9 +401,19 @@ async function rollCheck(abil, label) {
     } catch (e) { roll = null; total = null; }
   }
   if (total == null) {
-    const v = await promptNumber(`${label} — no character sheet to roll from. Enter your total:`);
-    if (!Number.isFinite(v)) return null;
-    total = Math.round(v);
+    const t = gmTestMod();
+    if (t != null) {
+      const roll = await (new Roll(`1d20 + ${t}`)).evaluate();
+      total = roll.total;
+      const dice = roll.dice?.[0]?.results || [];
+      nat = (dice.find((r) => r.active) ?? dice[0])?.result ?? null;
+      await chat(`<b>${label}</b> — test roll at ${t >= 0 ? "+" : ""}${t}: <b>${total}</b>`,
+                 "GM (testing)", [roll]);
+    } else {
+      const v = await promptNumber(`${label} — no character sheet to roll from. Enter your total:`);
+      if (!Number.isFinite(v)) return null;
+      total = Math.round(v);
+    }
   }
   return { total, nat };
 }
@@ -459,7 +483,11 @@ async function gmBuyIn(uid, msg) {
   const n = Math.max(0, Math.round(msg.obols || 0));
   if (n < S().OBOL.minLot) return notify(uid, `The house does not deal below ${S().OBOL.minLot} ØB.`);
   const actor = actorFor(uid);
-  if (!actor) return notify(uid, "You have no character assigned, so there is no purse to draw on.");
+  if (!actor) {
+    return notify(uid, game.users.get(uid)?.isGM
+      ? "No character assigned. Use the wallet cog to pay yourself Obols for testing."
+      : "You have no character assigned, so there is no purse to draw on.");
+  }
   const cp = S().cpForObols(n, cfg);
   const next = S().spendCp(purseOf(actor), cp);
   if (!next) return notify(uid, `That is ${S().fmtCp(cp)} and you do not have it.`);
@@ -616,6 +644,12 @@ async function gmPlay(uid, msg) {
   const actor = actorFor(uid);
   const abil = (S().GAMES.find((x) => x.id === g) || {}).abil;
   const bounds = abil ? checkBounds(actor, abil, msg.total) : { ok: true, bonus: 0 };
+  // A GM testing without a character told us what to pretend their modifier is.
+  // Only honoured for a GM, who can set any of this by hand anyway.
+  if (!actor && game.users.get(uid)?.isGM && Number.isFinite(msg.testMod)) {
+    bounds.bonus = msg.testMod;
+    bounds.ok = true;
+  }
   const isRollStep = abil && ["climb", "hand", "crack", null].includes(msg.step ?? null) &&
                      !["start", "walk"].includes(msg.step);
   if (isRollStep && msg.total != null && !bounds.ok) { rejectRoll(uid, msg.total, bounds.bonus); return; }
@@ -638,6 +672,14 @@ async function gmPlay(uid, msg) {
     if (amount >= 2000) await addHeat(led, uid, S().HEAT_EVENTS.bigWin, "won more than the room liked");
   };
   const who = game.users.get(uid)?.name || "Someone";
+
+  /* ---- Voidfall -------------------------------------------------------- */
+  // This dispatch was missing: gmCrashJoin/gmCrashOut existed but nothing ever
+  // called them, so pressing the button did nothing at all.
+  if (g === "voidfall") {
+    if (msg.step === "out") return gmCrashOut(uid);
+    return gmCrashJoin(uid, stake);
+  }
 
   /* ---- The Ladder ------------------------------------------------------ */
   if (g === "ladder") {
@@ -1288,6 +1330,36 @@ async function gmTool(uid, msg) {
       await writeLedger(led);
       break;
     }
+    case "wipeUser": {
+      // Everything one account has done, gone. For clearing up after testing.
+      delete led.users[msg.target];
+      await writeLedger(led);
+      const sec = getSecret();
+      if (sec.bets) { delete sec.bets[msg.target]; await setSecret(sec); }
+      notify(msg.target, "The house has closed and reopened your account. You are starting over.", "warn");
+      await note(`Wiped ${game.users.get(msg.target)?.name || msg.target}'s account`);
+      break;
+    }
+    case "wipeAll": {
+      await writeLedger({ v: 1, users: {}, house: { feesOb: 0, edgeOb: 0 }, settled: {} });
+      const sec2 = getSecret();
+      sec2.bets = {}; sec2.crash = null; await setSecret(sec2);
+      await note("Wiped every account");
+      break;
+    }
+    case "reseedBoard": {
+      // Positions have to go: they are shares in companies that will not exist
+      // on the new board, and leaving them would show a portfolio of ghosts.
+      for (const u of Object.values(led.users)) {
+        for (const o of u.orders || []) if (o.side === "buy") u.ob = (u.ob || 0) + (o.escrowOb || 0);
+        u.pos = {}; u.orders = [];
+        logLine(u, 0, "The board was reseeded — positions closed", 0);
+      }
+      await writeLedger(led);
+      await openTheBoard(true);
+      await note("Reseeded the board");
+      break;
+    }
     case "shock": {
       const market = structuredClone(st.market);
       const l = (market.listings || []).find((x) => x.id === msg.id);
@@ -1435,10 +1507,11 @@ const ACTIONS = {
     }
     const steps = NEEDS_ROLL[gameId];
     const wants = steps && steps.includes(payload.step ?? null);
-    if (!wants) return ask({ type: "play", game: gameId, ...payload });
+    const tm = gmTestMod();
+    if (!wants) return ask({ type: "play", game: gameId, ...payload, testMod: tm });
     const r = await rollCheck(g.abil, g.name);
     if (!r) return;
-    ask({ type: "play", game: gameId, ...payload, total: r.total, nat: r.nat });
+    ask({ type: "play", game: gameId, ...payload, total: r.total, nat: r.nat, testMod: tm });
   },
   readRumour: async (rid) => {
     const r = await rollCheck("wis", "Reading the wire");
@@ -1450,6 +1523,10 @@ const ACTIONS = {
     grant: (target, n) => ask({ type: "gm", tool: "grant", target, n }),
     setHeat: (target, n) => ask({ type: "gm", tool: "setHeat", target, n }),
     resetCounters: () => ask({ type: "gm", tool: "resetCounters" }),
+    wipeUser: (target) => ask({ type: "gm", tool: "wipeUser", target }),
+    wipeAll: () => ask({ type: "gm", tool: "wipeAll" }),
+    reseedBoard: () => ask({ type: "gm", tool: "reseedBoard" }),
+    setTestMod: async (n) => { await game.settings.set(MODULE_ID, SET_TESTMOD, n); refresh(); },
     shock: (id, n) => ask({ type: "gm", tool: "shock", id, n }),
     kill: (id) => ask({ type: "gm", tool: "kill", id }),
     headline: (text) => ask({ type: "gm", tool: "headline", text }),
@@ -1496,6 +1573,7 @@ Hooks.once("init", () => {
   game.settings.register(MODULE_ID, SET_SECRET, { scope: "client", config: false, type: Object, default: {} });
   game.settings.register(MODULE_ID, SET_PASS, { scope: "client", config: false, type: String, default: "" });
   game.settings.register(MODULE_ID, SET_BANDS, { scope: "client", config: false, type: Object, default: {} });
+  game.settings.register(MODULE_ID, SET_TESTMOD, { scope: "client", config: false, type: Number, default: null });
 
   const cfgBool = (key, dflt) => game.settings.register(MODULE_ID, key, {
     name: game.i18n.localize(`${MODULE_ID}.settings.${key}.name`),
@@ -1514,6 +1592,7 @@ Hooks.once("init", () => {
   cfgNum("tradesPerDay", 5, { min: 0, max: 30, step: 1 });
   cfgNum("gamblesPerDay", 10, { min: 0, max: 50, step: 1 });
   cfgBool("driveShopRestock", true);
+  cfgNum("burnInDays", 90, { min: 0, max: 240, step: 10 });
 
   game.keybindings.register(MODULE_ID, "open", {
     name: game.i18n.localize(`${MODULE_ID}.keybind.open.name`),
@@ -1559,6 +1638,7 @@ Hooks.once("ready", async () => {
       tradesPerDay: game.settings.get(MODULE_ID, "tradesPerDay"),
       gamblesPerDay: game.settings.get(MODULE_ID, "gamblesPerDay"),
       driveShopRestock: game.settings.get(MODULE_ID, "driveShopRestock"),
+      burnInDays: game.settings.get(MODULE_ID, "burnInDays"),
     });
   }
   if (isActiveGM() && !getState().started) await openTheBoard();
@@ -1597,8 +1677,28 @@ async function openTheBoard(force) {
   await loadContent();
   const sec = getSecret();
   if (!sec.latent || force) {
-    sec.latent = S().initLatent(CONTENT, (rand() * 2 ** 31) >>> 0);
+    /**
+     * These companies did not come into existence the day the crew found the
+     * terminal. Run the model forward in private first so the board arrives
+     * with a real past to chart, then wind the campaign clock back to zero: the
+     * history is theirs to read, the story starts now.
+     */
+    const burn = Math.max(0, Math.round(Number(getConfig().burnInDays) || 0));
+    let latent = S().initLatent(CONTENT, (rand() * 2 ** 31) >>> 0);
+    const standing = partyStanding();
+    for (let i = 0; i < burn; i++) {
+      latent = S().tickDay(latent, CONTENT, (rand() * 2 ** 31) >>> 0, { standing }).latent;
+    }
+    latent.day = 0;
+    latent.sched = [];        // nothing is already in flight on day one
+    latent.rum = {};
+    latent.pump = null;
+    latent.lastDeathAt = 0;   // not -999, or the drought bleed fires immediately
+    latent.lastPumpAt = 0;
+    latent.ipoQueue = [];
+    sec.latent = latent;
     await setSecret(sec);
+    if (burn) console.log(`${MODULE_ID} | ran ${burn} days of history before opening the board`);
   }
   const published = S().publish(sec.latent, CONTENT, { standingKnown: !!partyStanding() });
   const sources = {};

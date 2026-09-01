@@ -82,15 +82,44 @@ What the numbers should say, and why:
 | a full −10…+10 standing swing moves the exposed sectors **20–400%** over 60 days | The single most important claim the module makes. If this collapses, the politics module is not reaching the board and the premise is decoration. |
 | `arms` **falls** as the party befriends the Apostles | Sign check on the faction coupling. |
 
-### Two traps this model has already fallen into
+### The board opens with a past
+
+`openTheBoard()` runs `burnInDays` (default 90) of the simulation privately, then winds
+`latent.day` back to zero and clears the schedule, rumours and IPO queue. The charts therefore
+arrive with real history to read and a couple of companies have already been and gone, while the
+campaign clock still starts at day 0. Without it the exchange opens as eight flat lines, which
+tells a player nothing and looks broken.
+
+### Four traps this model has already fallen into
 
 - **Start the indices at their targets.** They used to start near zero and settle towards a
   non-zero `μ`, so every fresh world spent its first month sliding in the same predictable
   direction — arms and hauling down, synth up — regardless of anything anyone did.
+- **Count queued successors in the board top-up.** The emergency "never fall below eight" loop used
+  to fire on the same day a death queued its heir, so two listed where one had died and the board
+  crept to nine and beyond over a campaign. The invariant is not "always exactly eight" — it is
+  "never more than eight, and never short with nothing queued", which is what `starvedDays` asserts.
+- **Delist a collapsed listing before it reaches the price clamp.** A dying company kept decaying
+  until it pinned at 1 ØB with a spread that rounds to nothing. Anything under `delistBelowPx` is
+  now delisted outright and pays holders pennies.
 - **Measure the level tilt against a baseline.** `fairIdxLevel`/`idxLevel` apply to how far an
   index is from `latent.baseMu`, not from zero. Against zero, a setting whose factions are
   permanently belligerent hands arms a permanent bull market that has nothing to do with the party.
   The tilt is also capped at `M.levelCap` per day; uncapped it compounded to 22× the board.
+
+## 4b. Testing it yourself
+
+The GM has no purse and usually no character, so the wallet and the check games are unplayable
+without help. Two controls exist for that, both on the ⚙ panels:
+
+- **WALLET ⚙** — `PAY ME 5,000 ØB`, plus `WIPE THE SELECTED ACCOUNT` / `WIPE EVERY ACCOUNT` to clear
+  up after a test run, and `RESEED THE WHOLE BOARD` to throw the market away and generate a fresh
+  one with fresh history. Reseeding also closes everyone's positions, because they would otherwise
+  be holdings in companies that no longer exist.
+- **PIT ⚙** — a **pretend ability modifier**. With no character assigned there is nothing to roll
+  against; set this and the terminal rolls `1d20 + n` for every check, and the odds, handicapped DCs
+  and payouts all behave exactly as they would for a player with that modifier. It is a
+  `client`-scope setting, so it is yours alone, and it is only honoured for a user who is a GM.
 
 ## 5. Payout tables
 

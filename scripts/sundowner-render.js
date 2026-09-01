@@ -2060,6 +2060,17 @@
    * Called every animation tick by the wiring. Draws the run as it happens —
    * a number alone gives you nothing to feel.
    */
+  /** The status label. Blown beats everything: the round's `state` can be stale
+   *  when the client tick is throttled, and it read BUY-IN OPEN after a bust. */
+  function vfTag(live) {
+    if (!live) return "IDLE";
+    if (live.blown) return "GONE";
+    if (live.state === "run") return live.in ? "RUNNING — YOU ARE ON IT" : "RUNNING";
+    if (live.state === "open") return "BUY-IN OPEN";
+    return "IDLE";
+  }
+  S.vfTag = vfTag;
+
   function paintCrash(root, live) {
     if (!root || !live || live.game !== "voidfall") return;
     const box = root.querySelector(".vf");
@@ -2072,11 +2083,7 @@
     // Keep the status label honest between re-renders: the run ticks far more
     // often than the panel redraws, so it used to read BUY-IN OPEN throughout.
     const tag = root.querySelector(".vf-tag");
-    if (tag) {
-      tag.textContent = live.blown ? "GONE"
-        : live.state === "run" ? (live.in ? "RUNNING — YOU ARE ON IT" : "RUNNING")
-        : live.state === "open" ? "BUY-IN OPEN" : "IDLE";
-    }
+    if (tag) tag.textContent = vfTag(live);
     if (live.state === "run" || live.blown) {
       S._vfCurve.push(m);
       if (S._vfCurve.length > 240) S._vfCurve.shift();
@@ -2272,7 +2279,7 @@
       const locked = running && !raw?.in;      // a round is up but you are not in it
       return `<div class="sun-card accent${blown ? " shake" : ""}">${head}` +
         `<div class="vf${blown ? " blown" : mult >= 3 ? " hot" : ""}">` +
-          `<div class="vf-tag">${raw?.state === "open" ? "BUY-IN OPEN" : blown ? "GONE" : raw?.state === "run" ? "RUNNING" : "IDLE"}</div>` +
+          `<div class="vf-tag">${vfTag(raw)}</div>` +
           `<svg viewBox="0 0 320 150" preserveAspectRatio="none">` +
             `<polygon class="vf-fill" points="" fill="#38e1c4" opacity="0.18"/>` +
             `<polyline class="vf-line" points="" fill="none" stroke="#38e1c4" stroke-width="2.2" ` +
@@ -2280,7 +2287,8 @@
           `</svg>` +
           `<div class="vf-num">${blown ? "GONE" : "×" + mult.toFixed(2)}</div>` +
         `</div>` +
-        (raw?.state === "open" ? `<div class="sun-note">Buy-in closes in <b>${raw.countdown ?? 0}</b>…</div>` : "") +
+        (raw?.state === "open" && !blown
+          ? `<div class="sun-note">Buy-in closes in <b>${raw.countdown ?? 0}</b>…</div>` : "") +
         (raw?.cashedOb != null
           ? `<div class="verdict win pop">TOOK ${fmtOb(raw.cashedOb)}` +
             `<span class="sub">out at ×${(raw.outAt || 1).toFixed(2)}` +

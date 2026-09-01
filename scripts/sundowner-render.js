@@ -1499,7 +1499,10 @@
 .sgsun .vf.hot .vf-sub{color:#f2b03d;text-shadow:0 0 12px rgba(242,176,61,.5);}
 /* ---- roulette: wheel one side, the table the other ---- */
 .sgsun .roul{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
-.sgsun .roul-wheel{flex:1 1 340px;min-width:280px;display:flex;flex-direction:column;gap:4px;}
+/* Generous but bounded: unbounded it grew past 700px and ran off the bottom,
+   so you had to scroll to see the wheel you were watching. */
+.sgsun .roul-wheel{flex:1 1 340px;min-width:280px;max-width:min(520px,46vh);
+  display:flex;flex-direction:column;gap:4px;}
 .sgsun .roul-side{flex:1 1 300px;min-width:260px;display:flex;flex-direction:column;gap:9px;}
 .sgsun .roul .wheel-svg{max-width:none;width:100%;}
 @media (max-width:900px){.sgsun .roul{flex-direction:column;}}

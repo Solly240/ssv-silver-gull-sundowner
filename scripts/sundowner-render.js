@@ -1424,6 +1424,13 @@
 .sgsun .pit-card .nm{font-size:13px;font-weight:700;letter-spacing:1px;color:#cfeef0;}
 .sgsun .pit-card .ab{font-size:10px;letter-spacing:2px;color:#c98bff;}
 .sgsun .pit-card .bl{font-size:11px;color:#7fa6b4;line-height:1.5;}
+.sgsun .pit-strip{display:flex;gap:6px;flex-wrap:wrap;}
+.sgsun .pit-chip{font-family:inherit;font-size:11px;letter-spacing:1px;color:#6f97a6;background:#08161f;
+  border:1px solid #163b4e;border-radius:7px;padding:6px 10px;cursor:pointer;white-space:nowrap;
+  height:auto;min-height:0;line-height:1.2;}
+.sgsun .pit-chip:hover{border-color:#38e1c4;color:#cfeef0;}
+.sgsun .pit-chip.on{border-color:#c98bff;color:#c98bff;background:#140a1c;
+  box-shadow:0 0 12px rgba(201,139,255,.28);}
 .sgsun .rung{display:flex;align-items:center;gap:10px;padding:6px 9px;border-radius:7px;
   border:1px solid #163b4e;background:#061019;font-size:12px;}
 .sgsun .rung.done{border-color:#57d38c;color:#57d38c;}
@@ -1501,7 +1508,7 @@
 .sgsun .roul{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
 /* Generous but bounded: unbounded it grew past 700px and ran off the bottom,
    so you had to scroll to see the wheel you were watching. */
-.sgsun .roul-wheel{flex:1 1 340px;min-width:280px;max-width:min(520px,46vh);
+.sgsun .roul-wheel{flex:1 1 340px;min-width:280px;max-width:min(560px,62vh);
   display:flex;flex-direction:column;gap:4px;}
 .sgsun .roul-side{flex:1 1 300px;min-width:260px;display:flex;flex-direction:column;gap:9px;}
 .sgsun .roul .wheel-svg{max-width:none;width:100%;}
@@ -2138,22 +2145,29 @@
     const lim = heatLimits(me.heat);
     const open = GAMES.find((g) => g.id === S._pit);
 
-    const grid = `<div class="pit-grid">` + GAMES.map((g) => {
-      const blocked = g.id === "icerun" && lim.iceRunBlocked;
-      return `<div class="pit-card${S._pit === g.id ? " on" : ""}${blocked ? " off" : ""}" data-game="${g.id}">` +
-        `<div class="ic">${g.icon}</div>` +
-        `<div class="nm">${esc(g.name)}</div>` +
-        `<div class="ab">${g.ability}${g.abil ? " CHECK" : ""}</div>` +
-        `<div class="bl">${esc(g.blurb)}</div>` +
-        (blocked ? `<div class="sun-warn">The house will not deal you in.</div>` : "") +
-      `</div>`;
-    }).join("") + `</div>`;
+    // Browsing shows the full cards; once a game is open they collapse to a
+    // strip, or the eight cards push the table you are actually playing on
+    // clean off the bottom of the screen.
+    const grid = open
+      ? `<div class="pit-strip">` + GAMES.map((g) =>
+          `<button class="pit-chip${S._pit === g.id ? " on" : ""}" data-game="${g.id}" ` +
+          `title="${esc(g.name)}">${g.icon} ${esc(g.name)}</button>`).join("") + `</div>`
+      : `<div class="pit-grid">` + GAMES.map((g) => {
+          const blocked = g.id === "icerun" && lim.iceRunBlocked;
+          return `<div class="pit-card${blocked ? " off" : ""}" data-game="${g.id}">` +
+            `<div class="ic">${g.icon}</div>` +
+            `<div class="nm">${esc(g.name)}</div>` +
+            `<div class="ab">${g.ability}${g.abil ? " CHECK" : ""}</div>` +
+            `<div class="bl">${esc(g.blurb)}</div>` +
+            (blocked ? `<div class="sun-warn">The house will not deal you in.</div>` : "") +
+          `</div>`;
+        }).join("") + `</div>`;
 
     return `<div class="sun-row" style="align-items:center;margin-bottom:10px">` +
         `<div class="sun-note">The Cage takes <b>${left}</b> more plays from you today. ` +
         `Maximum stake at ${heatTier(me.heat).label}: <b>${lim.maxStakeOb ? fmtOb(lim.maxStakeOb) : "nothing"}</b>.</div>` +
       `</div>` + grid +
-      (open ? `<div style="margin-top:14px">${gamePanel(open, ctx, left, lim)}</div>` : "") +
+      (open ? `<div style="margin-top:12px">${gamePanel(open, ctx, left, lim)}</div>` : "") +
       (ctx.isGM ? gmPit(ctx) : "");
   }
 

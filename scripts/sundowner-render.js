@@ -1443,6 +1443,100 @@
 .sgsun .fighter.on{border-color:#38e1c4;}
 .sgsun .pbp{font-size:11px;line-height:1.6;max-height:190px;overflow:auto;color:#9db8c4;
   border:1px solid #163b4e;border-radius:7px;padding:8px;background:#040a10;}
+/* ================= the cage: animation ================= */
+@keyframes sun-shake{
+  0%,100%{transform:translate3d(0,0,0);}
+  10%{transform:translate3d(-6px,2px,0) rotate(-.5deg);}
+  25%{transform:translate3d(5px,-3px,0) rotate(.5deg);}
+  40%{transform:translate3d(-4px,3px,0);}
+  55%{transform:translate3d(4px,-2px,0) rotate(-.3deg);}
+  70%{transform:translate3d(-3px,1px,0);}
+  85%{transform:translate3d(2px,-1px,0);}
+}
+@keyframes sun-flash-bad{0%{background:rgba(224,69,77,.42);}100%{background:transparent;}}
+@keyframes sun-flash-good{0%{background:rgba(87,211,140,.34);}100%{background:transparent;}}
+@keyframes sun-flash-void{0%{background:rgba(155,74,190,.5);}100%{background:transparent;}}
+@keyframes sun-pop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.14);opacity:1;}100%{transform:scale(1);}}
+@keyframes sun-rise{from{opacity:0;transform:translateY(9px);}to{opacity:1;transform:none;}}
+@keyframes sun-pulse{0%,100%{box-shadow:0 0 0 rgba(242,176,61,0);}50%{box-shadow:0 0 18px rgba(242,176,61,.65);}}
+@keyframes sun-scan{from{transform:translateX(-105%);}to{transform:translateX(105%);}}
+@keyframes sun-glow{0%,100%{opacity:.55;}50%{opacity:1;}}
+@keyframes sun-drop{from{transform:translateY(0);opacity:1;}to{transform:translateY(16px);opacity:0;}}
+@keyframes sun-spin-slow{from{transform:rotate(0);}to{transform:rotate(360deg);}}
+.sgsun .shake{animation:sun-shake .55s cubic-bezier(.36,.07,.19,.97) both;}
+.sgsun .flash-bad{animation:sun-flash-bad .7s ease-out both;}
+.sgsun .flash-good{animation:sun-flash-good .7s ease-out both;}
+.sgsun .flash-void{animation:sun-flash-void 1.1s ease-out both;}
+.sgsun .pop{animation:sun-pop .42s cubic-bezier(.2,.9,.3,1.3) both;}
+.sgsun .rise{animation:sun-rise .3s ease-out both;}
+/* result banner */
+.sgsun .verdict{font-size:20px;font-weight:700;letter-spacing:3px;text-align:center;padding:10px 0 2px;}
+.sgsun .verdict .sub{display:block;font-size:11px;letter-spacing:2px;color:#6f97a6;font-weight:400;margin-top:4px;}
+.sgsun .verdict.win{color:#57d38c;text-shadow:0 0 18px rgba(87,211,140,.55);}
+.sgsun .verdict.lose{color:#e0454d;text-shadow:0 0 18px rgba(224,69,77,.5);}
+.sgsun .verdict.void{color:#c98bff;text-shadow:0 0 22px rgba(201,139,255,.6);}
+/* ---- roulette wheel ---- */
+.sgsun .wheel-wrap{display:flex;justify-content:center;align-items:center;padding:6px 0 2px;position:relative;}
+.sgsun .wheel-svg{max-width:260px;width:100%;height:auto;overflow:visible;}
+.sgsun .wheel-rot{transform-origin:110px 110px;transition:transform 4.2s cubic-bezier(.12,.72,.12,1);}
+.sgsun .wheel-ball{transform-origin:110px 110px;transition:transform 4.2s cubic-bezier(.1,.7,.15,1);}
+.sgsun .wheel-hub{fill:#061019;stroke:#1d6a86;}
+.sgsun .wheel-mark{fill:#f2b03d;}
+.sgsun .wheel-wrap.settled .wheel-svg{filter:drop-shadow(0 0 14px rgba(56,225,196,.35));}
+.sgsun .wheel-wrap.hollow .wheel-svg{filter:drop-shadow(0 0 22px rgba(155,74,190,.75));}
+/* ---- voidfall ---- */
+.sgsun .vf{position:relative;border:1px solid #163b4e;border-radius:9px;background:#040a10;overflow:hidden;}
+.sgsun .vf svg{display:block;width:100%;height:150px;}
+.sgsun .vf .vf-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:48px;font-weight:700;letter-spacing:2px;font-variant-numeric:tabular-nums;
+  color:#38e1c4;text-shadow:0 0 26px rgba(56,225,196,.55);pointer-events:none;}
+.sgsun .vf.hot .vf-num{color:#f2b03d;text-shadow:0 0 30px rgba(242,176,61,.7);}
+.sgsun .vf.blown .vf-num{color:#e0454d;text-shadow:0 0 34px rgba(224,69,77,.8);}
+.sgsun .vf .vf-tag{position:absolute;left:8px;top:6px;font-size:10px;letter-spacing:2px;color:#4f6b78;}
+/* ---- ladder ---- */
+.sgsun .rung{transition:border-color .25s,color .25s,box-shadow .25s,transform .25s,opacity .25s;}
+.sgsun .rung.now{animation:sun-pulse 1.3s ease-in-out infinite;}
+.sgsun .rung.cleared{border-color:#57d38c;color:#57d38c;box-shadow:0 0 12px rgba(87,211,140,.3);}
+.sgsun .rung.fallen{opacity:.25;border-style:dashed;animation:sun-drop .5s ease-in both;}
+.sgsun .rung .rung-bar{flex:1;height:3px;border-radius:2px;background:#0e2430;overflow:hidden;}
+.sgsun .rung .rung-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1d6a86,#38e1c4);
+  transition:width .5s ease;}
+.sgsun .rung.cleared .rung-bar i{width:100%;background:linear-gradient(90deg,#2f7d52,#57d38c);}
+/* ---- scan / cut sweep (ice run, signal skim) ---- */
+.sgsun .sweep{position:relative;overflow:hidden;border:1px solid #163b4e;border-radius:7px;background:#040a10;
+  height:46px;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:2px;color:#6f97a6;}
+.sgsun .sweep i{position:absolute;top:0;bottom:0;width:38%;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(56,225,196,.28),transparent);animation:sun-scan 1.1s linear infinite;}
+.sgsun .sweep.bad i{background:linear-gradient(90deg,transparent,rgba(224,69,77,.32),transparent);}
+.sgsun .noise{font-family:inherit;font-size:10px;line-height:1.35;color:#20465a;height:46px;overflow:hidden;
+  border:1px solid #163b4e;border-radius:7px;background:#040a10;padding:4px 6px;word-break:break-all;}
+.sgsun .noise b{color:#38e1c4;}
+/* ---- cold read ---- */
+.sgsun .cr{display:flex;gap:10px;align-items:stretch;}
+.sgsun .cr-side{flex:1 1 0;min-width:0;border:1px solid #163b4e;border-radius:9px;background:#040a10;
+  padding:10px;text-align:center;}
+.sgsun .cr-side .who{font-size:10px;letter-spacing:2px;color:#6f97a6;}
+.sgsun .cr-side .val{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:#cfeef0;min-height:38px;}
+.sgsun .cr-side.win{border-color:#57d38c;} .sgsun .cr-side.win .val{color:#57d38c;}
+.sgsun .cr-side.lose{border-color:#e0454d;} .sgsun .cr-side.lose .val{color:#e0454d;}
+.sgsun .cr-vs{align-self:center;font-size:11px;letter-spacing:2px;color:#6f97a6;}
+/* ---- pit wagers ---- */
+.sgsun .hp{height:6px;border-radius:3px;background:#0e2430;overflow:hidden;margin-top:4px;}
+.sgsun .hp i{display:block;height:100%;background:linear-gradient(90deg,#8a2f36,#e0454d);transition:width .45s ease;}
+.sgsun .fighter.won{border-color:#57d38c;box-shadow:0 0 16px rgba(87,211,140,.3);}
+.sgsun .fighter.lost{opacity:.45;}
+.sgsun .pbp div{animation:sun-rise .25s ease-out both;}
+/* ---- chits ---- */
+.sgsun .chit{position:relative;height:96px;border:1px solid #163b4e;border-radius:9px;background:#061019;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.sgsun .chit .seal{font-size:34px;transition:transform .4s ease,opacity .4s ease;}
+.sgsun .chit.open .seal{transform:scale(2.2);opacity:0;}
+.sgsun .chit .inside{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  padding:10px;text-align:center;font-size:12px;line-height:1.5;color:#cfeef0;opacity:0;transition:opacity .4s ease .25s;}
+.sgsun .chit.open .inside{opacity:1;}
+.sgsun .chit .crackline{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f2b03d;opacity:0;
+  box-shadow:0 0 14px #f2b03d;}
+.sgsun .chit.open .crackline{animation:sun-glow .5s ease-out both;}
 /* ---- gm ---- */
 .sgsun .gm{border-color:#f2b03d;}
 .sgsun .gm .sun-h{color:#f2b03d;border-color:#5c4416;}
@@ -1475,6 +1569,10 @@
   S._sel = null;         // selected ticker on the exchange
   S._pit = null;         // open game
   S._gm = {};            // which tab's cog is open
+  // The wheel shows RIFT as selected on open, so it had better BE selected —
+  // without this, pressing SPIN before touching a bet button did nothing at all.
+  S._roul = { key: "rift", arg: null };
+  S._qty = 10;
 
   const pct = (a, b) => (b ? (a / b - 1) * 100 : 0);
   const cls = (n) => (n > 0.001 ? "up" : n < -0.001 ? "dn" : "flat");
@@ -1559,6 +1657,33 @@
   /* -------------------------------------------------------------- shell */
   function renderPanel(root, ctx) {
     S.ensureStyles(root.ownerDocument);
+    /**
+     * Catch a freshly-landed outcome BEFORE the markup is built. Doing this in
+     * bind() was too late: the panel had already drawn itself in the settled
+     * state, so the wheel jumped to its final pocket instead of spinning to it.
+     */
+    const ok = outcomeKey(S._live);
+    if (ok && S._revealKey !== ok) {
+      S._revealKey = ok;
+      S._revealDone = false;
+      S._pbpStart = Date.now();
+      const game = S._live.game;
+      const ms = REVEAL_MS[game] || 1200;
+      // Guard on the key: a timer left over from the PREVIOUS outcome was
+      // firing mid-spin and settling the wheel a second after it started.
+      setTimeout(() => {
+        if (S._revealKey !== ok) return;
+        S._revealDone = true;
+        ctx.actions?.rerender?.();
+      }, ms);
+      if (game === "pitwager") {          // narrate the fight round by round
+        const iv = setInterval(() => {
+          if (S._revealDone || S._revealKey !== ok) return clearInterval(iv);
+          ctx.actions?.rerender?.();
+        }, 240);
+        setTimeout(() => clearInterval(iv), ms + 500);
+      }
+    }
     root.className = "sgsun";
     const me = ctx.me || {};
     const cfg = ctx.cfg || {};
@@ -1856,6 +1981,106 @@
   ];
   S.GAMES = GAMES;
 
+  /* ------------------------------------------------- animation plumbing */
+  /**
+   * Outcomes are decided GM-side before the player sees anything, so nothing
+   * here chooses a result — it plays one out. The renderer tracks which outcome
+   * it has already animated so a re-render (a price tick, another player's
+   * trade) does not restart the wheel mid-spin.
+   */
+  const REVEAL_MS = { roulette: 4600, pitwager: 3000, chits: 1000, coldread: 1200, ladder: 500, icerun: 700 };
+  function outcomeKey(live) {
+    if (!live) return null;
+    if (live.game === "roulette" && live.pocket != null) return "r" + hashStr(JSON.stringify(live));
+    if (live.game === "pitwager" && live.log) return "p" + hashStr(JSON.stringify(live));
+    if (live.game === "chits" && live.result) return "c" + hashStr(String(live.result));
+    return null;
+  }
+  const revealing = () => S._revealKey && !S._revealDone;
+  S._revealKey = null; S._revealDone = true;
+
+  /* ------------------------------------------------------ roulette wheel */
+  const POL = (cx, cy, r, deg) => {
+    const a = (deg * Math.PI) / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  function sectorPath(cx, cy, r0, r1, a0, a1) {
+    const [x0, y0] = POL(cx, cy, r1, a0), [x1, y1] = POL(cx, cy, r1, a1);
+    const [x2, y2] = POL(cx, cy, r0, a1), [x3, y3] = POL(cx, cy, r0, a0);
+    const big = a1 - a0 > 180 ? 1 : 0;
+    return `M${r2(x0)},${r2(y0)} A${r1},${r1} 0 ${big} 1 ${r2(x1)},${r2(y1)} ` +
+           `L${r2(x2)},${r2(y2)} A${r0},${r0} 0 ${big} 0 ${r2(x3)},${r2(y3)} Z`;
+  }
+  /** The wheel itself. `target` is the pocket to land on, or null for at rest. */
+  function rouletteWheel(target, settled) {
+    const N = ROULETTE.pockets, cx = 110, cy = 110, r0 = 60, r1 = 100, step = 360 / N;
+    let out = "";
+    for (let i = 0; i < N; i++) {
+      const a0 = (i - 0.5) * step - 90, a1 = (i + 0.5) * step - 90;
+      const fill = i === 0 ? "#5c2a7a" : i % 2 === 1 ? "#0d3644" : "#3a1620";
+      const stroke = i === 0 ? "#c98bff" : "#0a1c26";
+      out += `<path d="${sectorPath(cx, cy, r0, r1, a0, a1)}" fill="${fill}" stroke="${stroke}" stroke-width="0.6"/>`;
+      const [tx, ty] = POL(cx, cy, 80, i * step - 90);
+      out += `<text x="${r2(tx)}" y="${r2(ty)}" fill="${i === 0 ? "#e6c9ff" : "#9db8c4"}" font-size="7.5" ` +
+        `text-anchor="middle" dominant-baseline="central" ` +
+        `transform="rotate(${r2(i * step)} ${r2(tx)} ${r2(ty)})">${i === 0 ? "☒" : i}</text>`;
+    }
+    // Landing rotation: bring the winning pocket up to the marker, after a few
+    // full turns so it reads as a spin rather than a jump.
+    const deg = target == null ? 0 : 360 * 6 - target * step;
+    return `<div class="wheel-wrap${settled ? " settled" : ""}${settled && target === 0 ? " hollow" : ""}">` +
+      `<svg class="wheel-svg" viewBox="0 0 220 220">` +
+        `<circle cx="110" cy="110" r="104" fill="#040a10" stroke="#12455a"/>` +
+        `<g class="wheel-rot"${settled ? "" : ` data-deg="${r2(deg)}"`} ` +
+          `style="${settled ? `transform:rotate(${r2(deg)}deg);transition:none` : "transform:rotate(0deg)"}">` +
+          `${out}</g>` +
+        `<circle class="wheel-hub" cx="110" cy="110" r="52" stroke-width="1"/>` +
+        `<text x="110" y="110" text-anchor="middle" dominant-baseline="central" font-size="26" ` +
+          `fill="${settled ? (target === 0 ? "#c98bff" : "#38e1c4") : "#20465a"}" font-weight="700">` +
+          `${settled ? (target === 0 ? "☒" : target) : "—"}</text>` +
+        `<path class="wheel-mark" d="M110,2 L118,18 L102,18 Z"/>` +
+      `</svg>` +
+    `</div>`;
+  }
+  S.rouletteWheel = rouletteWheel;
+
+  /* ---------------------------------------------------------- voidfall */
+  S._vfCurve = [];
+  /**
+   * Called every animation tick by the wiring. Draws the run as it happens —
+   * a number alone gives you nothing to feel.
+   */
+  function paintCrash(root, live) {
+    if (!root || !live || live.game !== "voidfall") return;
+    const box = root.querySelector(".vf");
+    const num = root.querySelector(".vf-num");
+    if (!box || !num) return;
+    const m = live.blown ? live.mult : live.mult || 1;
+    num.textContent = live.blown ? "GONE" : "×" + (m || 1).toFixed(2);
+    box.classList.toggle("blown", !!live.blown);
+    box.classList.toggle("hot", !live.blown && m >= 3);
+    if (live.state === "run" || live.blown) {
+      S._vfCurve.push(m);
+      if (S._vfCurve.length > 240) S._vfCurve.shift();
+    }
+    const path = root.querySelector(".vf-line");
+    const fill = root.querySelector(".vf-fill");
+    if (!path || S._vfCurve.length < 2) return;
+    const a = S._vfCurve, W = 320, H = 150;
+    const hi = Math.max(1.25, Math.log(Math.max(...a)));
+    const x = (i) => (i / (a.length - 1)) * W;
+    const y = (v) => H - 8 - (Math.log(Math.max(1, v)) / hi) * (H - 26);
+    const pts = a.map((v, i) => `${r2(x(i))},${r2(y(v))}`).join(" ");
+    path.setAttribute("points", pts);
+    if (fill) fill.setAttribute("points", `0,${H} ${pts} ${r2(x(a.length - 1))},${H}`);
+    const c = live.blown ? "#e0454d" : m >= 3 ? "#f2b03d" : "#38e1c4";
+    path.setAttribute("stroke", c);
+    if (fill) fill.setAttribute("fill", c).valueOf();
+    if (fill) fill.style.opacity = "0.18";
+    if (fill) fill.setAttribute("fill", c);
+  }
+  S.paintCrash = paintCrash;
+
   function renderPit(ctx) {
     const me = ctx.me || {};
     const cfg = ctx.cfg || {};
@@ -1891,8 +2116,35 @@
     `</div>`;
   }
 
+  /** The banner every finished hand ends on. A loss used to just blank the panel. */
+  function verdict(live) {
+    if (!live || !live.outcome) return "";
+    const cls = live.outcome === "won" ? "win" : live.outcome === "void" ? "void" : "lose";
+    const head = live.headline || (live.outcome === "won" ? "PAID" : "GONE");
+    return `<div class="verdict ${cls} pop">${esc(head)}` +
+      (live.sub ? `<span class="sub">${esc(live.sub)}</span>` : "") + `</div>` +
+      `<div class="sun-row" style="justify-content:center">` +
+        `<button class="sun-btn hot" data-act="again">PLAY AGAIN</button></div>`;
+  }
+
+  /** Fake intercepted traffic for the Signal Skim wall. Cosmetic, deterministic. */
+  function noiseWall(seed, hit) {
+    const rnd = mulberry32(seed >>> 0);
+    const chars = "0123456789ABCDEF·:/\\|-_=+<>";
+    let out = "";
+    for (let i = 0; i < 190; i++) out += chars[Math.floor(rnd() * chars.length)];
+    if (hit != null) {
+      const at = 60 + Math.floor(rnd() * 60);
+      out = esc(out.slice(0, at)) + `<b>${esc(hit)}</b>` + esc(out.slice(at + hit.length));
+      return out;
+    }
+    return esc(out);
+  }
+
   function gamePanel(g, ctx, left, lim) {
-    const live = S._live && S._live.game === g.id ? S._live : null;
+    const raw = S._live && S._live.game === g.id ? S._live : null;
+    const live = raw && !raw.outcome ? raw : null;      // a finished hand is not an active one
+    const done = raw && raw.outcome ? raw : null;
     const me = ctx.me || {};
     const mod = ctx.mods?.[g.abil];
     const head = `<div class="sun-h">${g.icon} ${esc(g.name).toUpperCase()}` +
@@ -1900,91 +2152,121 @@
       `</div>`;
 
     if (g.id === "ladder") {
-      const odds = Number.isFinite(mod) ? ladderOdds(mod) : ladderOdds(0);
-      const rung = live?.rung ?? 0;
-      return `<div class="sun-card accent">${head}` +
+      const odds = ladderOdds(Number.isFinite(mod) ? mod : 0);
+      const rung = live?.rung ?? (done?.rung ?? 0);
+      return `<div class="sun-card accent${done?.outcome === "lost" ? " shake" : ""}">${head}` +
         (live
           ? `<div class="sun-note">On the ladder for <b>${fmtOb(live.stake)}</b>. Banked value right now: ` +
             `<b class="up">${fmtOb(Math.floor(live.stake * (rung ? LADDER.mult[rung - 1] : 1)))}</b>.</div>`
-          : stakeBox(200, left, lim)) +
+          : done ? "" : stakeBox(200, left, lim)) +
         LADDER.mult.map((m, i) => {
           const o = odds[i];
-          const state = live && i < rung ? "done" : live && i === rung ? "now" : "";
+          const state = done?.outcome === "lost" && i === rung ? "fallen"
+            : (live || done) && i < rung ? "cleared"
+            : live && i === rung ? "now" : "";
           return `<div class="rung ${state}"><span style="width:26px">${i + 1}</span>` +
             `<b style="width:60px">×${m}</b><span style="width:62px">DC ${o.dc}</span>` +
-            `<span class="sun-note">${Math.round(o.pass * 100)}% this rung · ${Math.round(o.cum * 100)}% from cold</span></div>`;
+            `<span class="rung-bar"><i></i></span>` +
+            `<span class="sun-note" style="width:150px;text-align:right">` +
+            `${Math.round(o.pass * 100)}% · ${Math.round(o.cum * 100)}% cold</span></div>`;
         }).join("") +
-        `<div class="sun-row">` +
+        (done ? verdict(done) : `<div class="sun-row">` +
           (live
-            ? `<button class="sun-btn hot" data-act="play" data-g="ladder" data-step="climb">CLIMB — DC ${effDC(LADDER.dc[rung], mod || 0)}</button>` +
+            ? `<button class="sun-btn hot" data-act="play" data-g="ladder" data-step="climb">CLIMB — DC ${odds[rung]?.dc ?? "—"}</button>` +
               (rung > 0 ? `<button class="sun-btn buy" data-act="play" data-g="ladder" data-step="bank">TAKE ${fmtOb(Math.floor(live.stake * LADDER.mult[rung - 1]))}</button>` : "")
             : `<button class="sun-btn hot" data-act="play" data-g="ladder" data-step="start"${left <= 0 ? " disabled" : ""}>STEP ON</button>`) +
-        `</div></div>`;
+        `</div>`) + `</div>`;
     }
 
     if (g.id === "skim") {
-      return `<div class="sun-card accent">${head}` +
+      return `<div class="sun-card accent${done?.outcome === "lost" ? " shake" : ""}">${head}` +
+        `<div class="noise">${done ? noiseWall(hashStr(String(done.total || 1)), done.outcome === "won" ? "◆PAYLOAD◆" : null)
+          : noiseWall(7, null)}</div>` +
         `<div class="sun-note">Set your own difficulty against the traffic. Harder read, better money. ` +
         `One roll, no second look.</div>` +
-        stakeBox(200, left, lim) +
-        `<div class="sun-row">` + SKIM.map((t) =>
-          `<button class="sun-btn hot" data-act="play" data-g="skim" data-dc="${t.dc}"${left <= 0 ? " disabled" : ""}>` +
-          `${esc(t.label)} — ×${t.mult}<br><span class="sun-note">DC ${effDC(t.dc, mod || 0)} · ` +
-          `${Number.isFinite(mod) ? `${Math.round(passChance(t.dc, mod) * 100)}%` : "—"}` +
-          `</span></button>`).join("") + `</div></div>`;
+        (done ? verdict(done) : stakeBox(200, left, lim) +
+          `<div class="sun-row">` + SKIM.map((t) =>
+            `<button class="sun-btn hot" data-act="play" data-g="skim" data-dc="${t.dc}"${left <= 0 ? " disabled" : ""}>` +
+            `${esc(t.label)} — ×${t.mult}<br><span class="sun-note">DC ${effDC(t.dc, mod || 0)} · ` +
+            `${Number.isFinite(mod) ? `${Math.round(passChance(t.dc, mod) * 100)}%` : "—"}` +
+            `</span></button>`).join("") + `</div>`) +
+        `</div>`;
     }
 
     if (g.id === "coldread") {
-      const rd = live?.round ?? 0;
-      return `<div class="sun-card accent">${head}` +
-        `<div class="sun-note">Three hands against the house intelligence. Deception against its read. ` +
-        `The pot doubles each hand you take; walk after any of them, lose one and it keeps the lot.</div>` +
+      const rd = live?.round ?? (done?.round ?? 0);
+      const showdown = (live && live.you != null) || (done && done.you != null);
+      return `<div class="sun-card accent${done?.outcome === "lost" ? " shake" : ""}">${head}` +
+        `<div class="cr">` +
+          `<div class="cr-side${showdown ? ((done || live).you > (done || live).house ? " win" : " lose") : ""}">` +
+            `<div class="who">YOU</div><div class="val${showdown ? " pop" : ""}">` +
+            `${showdown ? (done || live).you : "—"}</div></div>` +
+          `<div class="cr-vs">VS</div>` +
+          `<div class="cr-side${showdown ? ((done || live).house >= (done || live).you ? " win" : " lose") : ""}">` +
+            `<div class="who">THE MACHINE</div><div class="val${showdown ? " pop" : ""}">` +
+            `${showdown ? (done || live).house : "—"}</div></div>` +
+        `</div>` +
         (live
           ? `<div class="sun-note">Hand <b>${rd + 1}</b> of 3. Pot: <b class="up">${fmtOb(live.pot)}</b>. ` +
             `It reads at <b>+${coldReadHouse(rd, mod || 0)}</b>.</div>`
-          : stakeBox(200, left, lim)) +
-        `<div class="sun-row">` +
+          : done ? "" : `<div class="sun-note">Three hands against the house intelligence. The pot grows ` +
+            `each hand you take; walk after any of them, lose one and it keeps the lot.</div>` + stakeBox(200, left, lim)) +
+        (done ? verdict(done) : `<div class="sun-row">` +
           (live
             ? `<button class="sun-btn hot" data-act="play" data-g="coldread" data-step="hand">PLAY THE HAND</button>` +
               `<button class="sun-btn buy" data-act="play" data-g="coldread" data-step="walk">WALK WITH ${fmtOb(live.pot)}</button>`
             : `<button class="sun-btn hot" data-act="play" data-g="coldread" data-step="start"${left <= 0 ? " disabled" : ""}>SIT DOWN</button>`) +
-        `</div></div>`;
+        `</div>`) + `</div>`;
     }
 
     if (g.id === "icerun") {
-      const layer = live?.layer ?? 0;
-      return `<div class="sun-card accent">${head}` +
-        `<div class="sun-note">The house sells tickets to somebody else's vault. Three layers. ` +
-        `Clear all three and it pays <b>×${ICE_RUN.mult}</b>. Fail any of them and you lose the ticket ` +
+      const layer = live?.layer ?? (done?.layer ?? 0);
+      const rows = iceRunOdds(mod || 0).rows;
+      return `<div class="sun-card accent${done?.outcome === "lost" ? " shake" : ""}">${head}` +
+        `<div class="sun-note">Three layers of somebody else's vault. Clear all three and it pays ` +
+        `<b>×${ICE_RUN.mult}</b>. Fail any of them and you lose the ticket ` +
         `<span class="sun-warn">and pick up ${ICE_RUN.heatOnFail} Heat</span> — which is the real stake.</div>` +
-        (live ? `<div class="sun-note">Ticket <b>${fmtOb(live.stake)}</b>. Layer <b>${layer + 1}</b> of 3, DC ${effDC(ICE_RUN.layers[layer], mod || 0)}.</div>`
-              : stakeBox(400, left, lim)) +
-        iceRunOdds(mod || 0).rows.map((r, i) =>
-          `<div class="rung ${live && i < layer ? "done" : live && i === layer ? "now" : ""}">` +
-          `<span style="width:26px">${i + 1}</span><span style="width:62px">DC ${r.dc}</span>` +
-          `<span class="sun-note">${Math.round(r.pass * 100)}% · ${Math.round(r.cum * 100)}% clean so far</span></div>`).join("") +
-        `<div class="sun-row">` +
+        (live ? `<div class="sun-note">Ticket <b>${fmtOb(live.stake)}</b>. Layer <b>${layer + 1}</b> of 3.</div>`
+              : done ? "" : stakeBox(400, left, lim)) +
+        rows.map((r, i) => {
+          const cleared = (live || done) && i < layer;
+          const active = live && i === layer;
+          const blown = done?.outcome === "lost" && i === layer;
+          if (active) return `<div class="sweep"><i></i>CUTTING LAYER ${i + 1} — DC ${r.dc}</div>`;
+          if (blown) return `<div class="sweep bad"><i></i>LAYER ${i + 1} TRIPPED</div>`;
+          return `<div class="rung ${cleared ? "cleared" : ""}"><span style="width:26px">${i + 1}</span>` +
+            `<span style="width:62px">DC ${r.dc}</span><span class="rung-bar"><i></i></span>` +
+            `<span class="sun-note" style="width:150px;text-align:right">${Math.round(r.pass * 100)}% · ` +
+            `${Math.round(r.cum * 100)}% clean</span></div>`;
+        }).join("") +
+        (done ? verdict(done) : `<div class="sun-row">` +
           (live
             ? `<button class="sun-btn hot" data-act="play" data-g="icerun" data-step="crack">CUT THE LAYER</button>`
             : `<button class="sun-btn hot" data-act="play" data-g="icerun" data-step="start"` +
               `${left <= 0 || lim.iceRunBlocked ? " disabled" : ""}>BUY A TICKET</button>`) +
-        `</div></div>`;
+        `</div>`) + `</div>`;
     }
 
     if (g.id === "voidfall") {
-      const mult = live?.mult ?? 1;
-      const blown = live?.blown;
-      return `<div class="sun-card accent">${head}` +
-        `<div class="crash${blown ? " blown" : ""}">${blown ? "GONE" : "×" + mult.toFixed(2)}</div>` +
-        (live?.state === "open"
-          ? `<div class="sun-note">Buy-in closes in <b>${live.countdown ?? 0}</b>…</div>`
-          : "") +
-        (live?.in
+      const mult = raw?.mult ?? 1;
+      const blown = raw?.blown;
+      return `<div class="sun-card accent${blown ? " shake" : ""}">${head}` +
+        `<div class="vf${blown ? " blown" : mult >= 3 ? " hot" : ""}">` +
+          `<div class="vf-tag">${raw?.state === "open" ? "BUY-IN OPEN" : blown ? "GONE" : raw?.state === "run" ? "RUNNING" : "IDLE"}</div>` +
+          `<svg viewBox="0 0 320 150" preserveAspectRatio="none">` +
+            `<polygon class="vf-fill" points="" fill="#38e1c4" opacity="0.18"/>` +
+            `<polyline class="vf-line" points="" fill="none" stroke="#38e1c4" stroke-width="2.2" ` +
+              `stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>` +
+          `</svg>` +
+          `<div class="vf-num">${blown ? "GONE" : "×" + mult.toFixed(2)}</div>` +
+        `</div>` +
+        (raw?.state === "open" ? `<div class="sun-note">Buy-in closes in <b>${raw.countdown ?? 0}</b>…</div>` : "") +
+        (raw?.in
           ? `<div class="sun-row"><button class="sun-btn buy" data-act="play" data-g="voidfall" data-step="out">` +
-            `TAKE ${fmtOb(Math.floor((live.stake || 0) * mult))}</button></div>`
+            `TAKE ${fmtOb(Math.floor((raw.stake || 0) * mult))}</button></div>`
           : `${stakeBox(200, left, lim)}<div class="sun-row">` +
             `<button class="sun-btn hot" data-act="play" data-g="voidfall" data-step="join"${left <= 0 ? " disabled" : ""}>` +
-            `${live?.state === "open" ? "GET IN" : "OPEN A ROUND"}</button></div>`) +
+            `${raw?.state === "open" ? "GET IN" : "OPEN A ROUND"}</button></div>`) +
         `<div class="sun-note">The number is the house's, not yours — your terminal only draws it. ` +
         `Whatever your connection is doing, the moment you press is the moment that counts.</div>` +
       `</div>`;
@@ -1992,8 +2274,18 @@
 
     if (g.id === "roulette") {
       const bet = S._roul || { key: "rift", arg: null };
+      const spun = raw && raw.pocket != null;
+      const settled = spun && S._revealDone;
       const nums = Array.from({ length: 37 }, (_, i) => i);
-      return `<div class="sun-card accent">${head}` +
+      return `<div class="sun-card accent${settled && raw.pocket === 0 ? " flash-void" : settled && raw.win ? " flash-good" : ""}">` +
+        head + rouletteWheel(spun ? raw.pocket : null, settled) +
+        (settled
+          ? `<div class="verdict ${raw.pocket === 0 ? "void" : raw.win ? "win" : "lose"} pop">` +
+            `${raw.pocket === 0 ? "THE HOLLOW" : raw.win ? "PAID " + fmtOb(raw.payoutOb) : "NOTHING"}` +
+            `<span class="sub">${raw.pocket === 0
+              ? "It does not pay. It takes the table."
+              : "Pocket " + raw.pocket}</span></div>`
+          : spun ? `<div class="sun-note" style="text-align:center">spinning…</div>` : "") +
         `<div class="sun-note">Thirty-seven pockets. <b style="color:#c98bff">Pocket 0 is the Hollow</b>, and ` +
         `the Hollow does not pay — it takes the table.</div>` +
         stakeBox(100, left, lim) +
@@ -2006,9 +2298,8 @@
           `<div class="pk${n === 0 ? " hollow" : ""}${bet.key === "single" && Number(bet.arg) === n ? " on" : ""}" ` +
           `data-act="roulnum" data-n="${n}">${n === 0 ? "☒" : n}</div>`).join("") + `</div>` +
         `<div class="sun-note">Single number pays 35:1.</div>` +
-        `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="roulette"${left <= 0 ? " disabled" : ""}>SPIN</button></div>` +
-        (live?.pocket != null ? `<div class="sun-note">Landed: <b>${live.pocket === 0 ? "THE HOLLOW" : live.pocket}</b> — ` +
-          `${live.win ? `<span class="up">paid ${fmtOb(live.payoutOb)}</span>` : `<span class="dn">nothing</span>`}</div>` : "") +
+        `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="roulette"` +
+          `${left <= 0 || revealing() ? " disabled" : ""}>${revealing() ? "SPINNING…" : "SPIN"}</button></div>` +
       `</div>`;
     }
 
@@ -2017,39 +2308,65 @@
       if (!card) return `<div class="sun-card accent">${head}<div class="sun-note">No card today. ` +
         `The pits run when the pits run.</div></div>`;
       const on = S._fighter;
+      const fought = raw && raw.log;
+      const shown = fought ? (S._revealDone ? raw.log.length : Math.max(1, Math.ceil(raw.log.length * S._pbpProgress()))) : 0;
+      const last = fought && shown ? raw.log[shown - 1] : null;
+      const hpOf = (k) => {
+        if (!last) return 100;
+        const max = card[k].hp;
+        return clamp(((k === "a" ? last.ah : last.bh) / max) * 100, 0, 100);
+      };
       return `<div class="sun-card accent">${head}` +
         `<div class="sun-note">${esc(card.venue || "Ossuary, under the gantries")} — today's card.</div>` +
         `<div class="fight">` + ["a", "b"].map((k) => {
           const f = card[k];
-          return `<div class="fighter${on === k ? " on" : ""}" data-act="pickfighter" data-k="${k}">` +
-            `<div class="nm" style="font-weight:700;color:#38e1c4">${esc(f.name)}</div>` +
+          const won = fought && S._revealDone && raw.winner === k;
+          const lost = fought && S._revealDone && raw.winner !== k;
+          return `<div class="fighter${on === k ? " on" : ""}${won ? " won" : ""}${lost ? " lost" : ""}" ` +
+            `data-act="pickfighter" data-k="${k}">` +
+            `<div style="font-weight:700;color:#38e1c4">${esc(f.name)}</div>` +
             `<div class="sun-note">${esc(f.gimmick || "")}</div>` +
             `<div class="sun-note">HP ${f.hp} · ATK +${f.atk} · AC ${f.ac} · DMG ${f.dmg}</div>` +
+            (fought ? `<div class="hp"><i style="width:${r2(hpOf(k))}%"></i></div>` : "") +
             `<div class="sun-pl"><div class="cell"><span class="lbl">PAYS</span>` +
             `<span class="big" style="font-size:20px">×${k === "a" ? card.oddsA : card.oddsB}</span></div></div>` +
           `</div>`;
         }).join("") + `</div>` +
-        stakeBox(200, left, lim) +
-        `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="pitwager"` +
-          `${left <= 0 || !on ? " disabled" : ""}>PUT IT ON ${on ? esc(card[on].name).toUpperCase() : "…"}</button></div>` +
-        (live?.log ? `<div class="pbp">` + live.log.map((r) =>
-          `ROUND ${r.round} — ${esc(card.a.name)} ${r.a ? `lands ${r.a}` : "misses"}, ` +
-          `${esc(card.b.name)} ${r.b ? `lands ${r.b}` : "misses"} · ${r.ah}/${r.bh}`).join("<br>") +
-          `<br><b>${esc(card[live.winner].name)} takes it.</b></div>` : "") +
+        (fought
+          ? `<div class="pbp">` + raw.log.slice(0, shown).map((r) =>
+              `<div>ROUND ${r.round} — ${esc(card.a.name)} ${r.a ? `lands ${r.a}` : "misses"}, ` +
+              `${esc(card.b.name)} ${r.b ? `lands ${r.b}` : "misses"} · ${r.ah}/${r.bh}</div>`).join("") +
+            (S._revealDone ? `<div><b>${esc(card[raw.winner].name)} takes it.</b></div>` : "") + `</div>` +
+            (S._revealDone ? verdict(raw) : "")
+          : stakeBox(200, left, lim) +
+            `<div class="sun-row"><button class="sun-btn hot" data-act="play" data-g="pitwager"` +
+            `${left <= 0 || !on ? " disabled" : ""}>PUT IT ON ${on ? esc(card[on].name).toUpperCase() : "…"}</button></div>`) +
       `</div>`;
     }
 
     if (g.id === "chits") {
+      const opened = raw && raw.result;
       return `<div class="sun-card accent">${head}` +
         `<div class="sun-note">Sealed lots, sold unopened, off ships nobody filed a loss for.</div>` +
-        `<div class="sun-row">` + CHIT_TIERS.map((t) =>
-          `<button class="sun-btn hot" data-act="play" data-g="chits" data-tier="${t.id}"${left <= 0 ? " disabled" : ""}>` +
-          `${esc(t.name)}<br><span class="sun-note">${fmtOb(t.costOb)}</span></button>`).join("") + `</div>` +
-        (live?.result ? `<div class="sun-note" style="margin-top:8px">${esc(live.result)}</div>` : "") +
+        (opened
+          ? `<div class="chit${S._revealDone ? " open" : ""}"><div class="crackline"></div>` +
+            `<div class="seal">▩</div><div class="inside">${raw.result}</div></div>` +
+            (S._revealDone ? `<div class="sun-row" style="justify-content:center">` +
+              `<button class="sun-btn hot" data-act="again">ANOTHER</button></div>` : "")
+          : `<div class="sun-row">` + CHIT_TIERS.map((t) =>
+            `<button class="sun-btn hot" data-act="play" data-g="chits" data-tier="${t.id}"${left <= 0 ? " disabled" : ""}>` +
+            `${esc(t.name)}<br><span class="sun-note">${fmtOb(t.costOb)}</span></button>`).join("") + `</div>`) +
       `</div>`;
     }
     return `<div class="sun-card">${head}<div class="sun-note">Not on this terminal.</div></div>`;
   }
+
+  /** How far through the round-by-round the fight narration is. */
+  S._pbpStart = 0;
+  S._pbpProgress = () => {
+    if (!S._pbpStart) return 1;
+    return clamp((Date.now() - S._pbpStart) / REVEAL_MS.pitwager, 0.05, 1);
+  };
 
   /* --------------------------------------------------------------- wire */
   function renderWire(ctx) {
@@ -2213,6 +2530,23 @@
   /* ------------------------------------------------------------- events */
   function bind(root, ctx) {
     const A = ctx.actions || {};
+
+    // A CSS transition will not run on a freshly inserted element, so commit
+    // the starting value with a forced reflow and then set the target.
+    // Deliberately NOT requestAnimationFrame: browsers throttle rAF to a stop
+    // in a background tab, and the wheel would silently never spin.
+    const kick = (el, apply) => {
+      if (!el) return;
+      void el.getBoundingClientRect();
+      apply(el);
+    };
+    kick(root.querySelector(".wheel-rot[data-deg]"), (el) => {
+      el.style.transform = `rotate(${el.dataset.deg}deg)`;
+    });
+    root.querySelectorAll(".rung.cleared .rung-bar i").forEach((el) => {
+      el.style.width = "0";
+      kick(el, (x) => { x.style.width = "100%"; });
+    });
     const num = (sel, dflt) => {
       const el = root.querySelector(`[data-in="${sel}"]`);
       const v = Math.floor(Number(el?.value));
@@ -2240,6 +2574,7 @@
       const act = el.dataset.act;
       switch (act) {
         case "close": return A.close?.();
+        case "again": S._live = null; S._revealKey = null; S._revealDone = true; return A.rerender?.();
         case "advance": return A.advanceDay?.();
         case "buyin": return A.buyIn?.(Math.max(OBOL.minLot, num("buyin", 100)));
         case "cashout": return A.cashOut?.(Math.max(OBOL.minLot, num("cashout", 100)));

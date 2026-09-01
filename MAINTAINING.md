@@ -121,6 +121,28 @@ without help. Two controls exist for that, both on the ⚙ panels:
   and payouts all behave exactly as they would for a player with that modifier. It is a
   `client`-scope setting, so it is yours alone, and it is only honoured for a user who is a GM.
 
+## 4c. Animation
+
+Outcomes are decided GM-side before the player sees anything, so nothing in the renderer *chooses*
+a result — it plays one out. Three rules keep that honest and un-janky:
+
+- **Detect a new outcome at the top of `renderPanel()`, not in `bind()`.** `bind()` runs after the
+  markup is built, so the panel had already drawn itself settled and the wheel jumped to its final
+  pocket instead of spinning to it.
+- **Guard every reveal timer on the outcome key.** A timer left over from the previous spin was
+  firing mid-spin and settling the wheel a second after it started.
+- **Kick transitions with a forced reflow, never `requestAnimationFrame`.** A CSS transition will
+  not run on a freshly inserted element that already carries its final value, and rAF is throttled
+  to a complete stop in a background tab — the wheel would silently never turn. `void
+  el.getBoundingClientRect()` then set the target.
+
+The settled wheel renders with `transition:none` and its final rotation inline, so the redraw that
+reveals the result does not re-spin it.
+
+Terminal outcomes send `{outcome, headline, sub}` rather than clearing the live state, so a loss
+gets a verdict banner instead of the panel silently blanking. `gmPlay` treats a live record that
+carries an `outcome` as *not* an active hand, and the player dismisses it with PLAY AGAIN.
+
 ## 5. Payout tables
 
 Every check game is handicapped: `effDC = base + modifier − edge`, where `edge` is

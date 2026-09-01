@@ -639,7 +639,8 @@ function stakeOk(u, stake) {
 async function gmPlay(uid, msg) {
   const cfg = getConfig(), st = getState(), led = getLedger();
   const u = rollDay(userRec(led, uid), st.day);
-  const live = liveOf(uid);
+  const raw = liveOf(uid);
+  const live = raw && !raw.outcome ? raw : null;   // a settled hand is not a live one
   const g = msg.game;
   const actor = actorFor(uid);
   const abil = (S().GAMES.find((x) => x.id === g) || {}).abil;
@@ -696,7 +697,9 @@ async function gmPlay(uid, msg) {
       const mult = S().LADDER.mult[live.rung - 1] || 0;
       const won = Math.floor(live.stake * mult);
       await payOut(won, `Came off the Ladder at rung ${live.rung} (x${mult})`);
-      await writeLedger(led); await setLive(uid, null);
+      await writeLedger(led);
+      await setLive(uid, { game: "ladder", outcome: "won", rung: live.rung, stake: live.stake,
+        headline: `TOOK ${won.toLocaleString()} ØB`, sub: `off at rung ${live.rung}, ×${mult}` });
       chat(`<b>${who}</b> comes off the Ladder at rung ${live.rung} with <b>${won.toLocaleString()} ØB</b>.`, "The Cage");
       return broadcastRefresh();
     }
@@ -705,7 +708,9 @@ async function gmPlay(uid, msg) {
       const win = msg.nat === 20 ? true : msg.nat === 1 ? false : msg.total >= dc;
       if (!win) {
         logLine(u, st.day, `Fell off the Ladder at rung ${live.rung + 1}`, 0);
-        await writeLedger(led); await setLive(uid, null);
+        await writeLedger(led);
+        await setLive(uid, { game: "ladder", outcome: "lost", rung: live.rung, stake: live.stake,
+          headline: "FELL", sub: `missed DC ${dc} on rung ${live.rung + 1} — ${live.stake.toLocaleString()} ØB gone` });
         chat(`<b>${who}</b> misses DC ${dc} on rung ${live.rung + 1} and the Ladder takes ` +
              `<b>${live.stake.toLocaleString()} ØB</b>.`, "The Cage");
         return broadcastRefresh();
@@ -714,7 +719,9 @@ async function gmPlay(uid, msg) {
       if (rung >= S().LADDER.mult.length) {
         const won = Math.floor(live.stake * S().LADDER.mult[rung - 1]);
         await payOut(won, "Topped out the Ladder");
-        await writeLedger(led); await setLive(uid, null);
+        await writeLedger(led);
+        await setLive(uid, { game: "ladder", outcome: "won", rung, stake: live.stake,
+          headline: `TOPPED OUT — ${won.toLocaleString()} ØB`, sub: "the room goes quiet" });
         chat(`<b>${who}</b> <b>tops out the Ladder</b> and takes ${won.toLocaleString()} ØB. ` +
              `The room goes quiet.`, "The Cage");
         return broadcastRefresh();
@@ -739,6 +746,9 @@ async function gmPlay(uid, msg) {
     if (win) await payOut(won, `${tier.label} on the Skim (x${tier.mult})`);
     else logLine(u, st.day, `Lost the ${tier.label}`, -stake);
     await writeLedger(led);
+    await setLive(uid, { game: "skim", outcome: win ? "won" : "lost", total: msg.total,
+      headline: win ? `PAYLOAD — ${won.toLocaleString()} ØB` : "NOTHING IN THE TRAFFIC",
+      sub: `rolled ${msg.total} against DC ${dc}` });
     chat(`<b>${who}</b> runs a ${tier.label} against DC ${dc} — ` +
       (win ? `<b>clean</b>, ${won.toLocaleString()} ØB.` : `<b>nothing</b>.`), "The Cage");
     return broadcastRefresh();
@@ -756,7 +766,10 @@ async function gmPlay(uid, msg) {
     if (!live) return;
     if (msg.step === "walk") {
       await payOut(live.pot, `Walked away from the Cold Read after ${live.round} hand(s)`);
-      await writeLedger(led); await setLive(uid, null);
+      await writeLedger(led);
+      await setLive(uid, { game: "coldread", outcome: "won", round: live.round,
+        you: live.you, house: live.house,
+        headline: `WALKED WITH ${live.pot.toLocaleString()} ØB`, sub: "the machine says nothing" });
       chat(`<b>${who}</b> stands up with <b>${live.pot.toLocaleString()} ØB</b>. The machine says nothing.`, "The Cage");
       return broadcastRefresh();
     }
@@ -769,7 +782,10 @@ async function gmPlay(uid, msg) {
       if (!win) {
         if (msg.nat === 1) await addHeat(led, uid, S().HEAT_EVENTS.coldReadCaught, "was caught bluffing badly");
         logLine(u, st.day, `Lost the Cold Read on hand ${live.round + 1}`, 0);
-        await writeLedger(led); await setLive(uid, null);
+        await writeLedger(led);
+        await setLive(uid, { game: "coldread", outcome: "lost", round: live.round,
+          you: msg.total, house: hRoll.total,
+          headline: "READ", sub: `it had ${hRoll.total} against your ${msg.total} — ${live.pot.toLocaleString()} ØB stays put` });
         chat(`<b>${who}</b> is read, and the pot of ${live.pot.toLocaleString()} ØB stays where it is.`, "The Cage");
         return broadcastRefresh();
       }
@@ -777,12 +793,14 @@ async function gmPlay(uid, msg) {
       const pot = Math.floor(live.pot * S().COLD_READ.potMult);
       if (round >= S().COLD_READ.rounds) {
         await payOut(pot, "Took all three hands of the Cold Read");
-        await writeLedger(led); await setLive(uid, null);
+        await writeLedger(led);
+        await setLive(uid, { game: "coldread", outcome: "won", round, you: msg.total, house: hRoll.total,
+          headline: `ALL THREE — ${pot.toLocaleString()} ØB`, sub: "you read it better than it read you" });
         chat(`<b>${who}</b> takes <b>all three hands</b> and ${pot.toLocaleString()} ØB with them.`, "The Cage");
         return broadcastRefresh();
       }
       await writeLedger(led);
-      await setLive(uid, { ...live, round, pot });
+      await setLive(uid, { ...live, round, pot, you: msg.total, house: hRoll.total });
       return broadcastRefresh();
     }
     return;
@@ -805,7 +823,9 @@ async function gmPlay(uid, msg) {
     if (!win) {
       await addHeat(led, uid, S().HEAT_EVENTS.iceRunFail, "tripped something on the way in");
       logLine(u, st.day, `Tripped the ice on layer ${live.layer + 1}`, 0);
-      await writeLedger(led); await setLive(uid, null);
+      await writeLedger(led);
+      await setLive(uid, { game: "icerun", outcome: "lost", layer: live.layer, stake: live.stake,
+        headline: "TRIPPED", sub: `layer ${live.layer + 1} at DC ${dc} — the ticket and your anonymity` });
       chat(`<b>${who}</b> trips layer ${live.layer + 1} (DC ${dc}). The ticket is gone and so is ` +
            `the anonymity.`, "The Cage");
       return broadcastRefresh();
@@ -814,7 +834,9 @@ async function gmPlay(uid, msg) {
     if (layer >= S().ICE_RUN.layers.length) {
       const won = live.stake * S().ICE_RUN.mult;
       await payOut(won, `Cracked the vault (x${S().ICE_RUN.mult})`);
-      await writeLedger(led); await setLive(uid, null);
+      await writeLedger(led);
+      await setLive(uid, { game: "icerun", outcome: "won", layer, stake: live.stake,
+        headline: `THROUGH — ${won.toLocaleString()} ØB`, sub: "and nobody saw a thing" });
       chat(`<b>${who}</b> is through all three layers. <b>${won.toLocaleString()} ØB</b>, and nobody ` +
            `saw a thing.`, "The Cage");
       return broadcastRefresh();
@@ -853,7 +875,10 @@ async function gmPlay(uid, msg) {
     if (won) await payOut(won, `Backed ${card[msg.fighter].name} and was right`);
     else logLine(u, st.day, `Backed ${card[msg.fighter].name} and was not`, -stake);
     await writeLedger(led);
-    await setLive(uid, { game: "pitwager", log: out.log.slice(0, 14), winner: out.winner });
+    await setLive(uid, { game: "pitwager", log: out.log.slice(0, 14), winner: out.winner,
+      outcome: won ? "won" : "lost",
+      headline: won ? `PAID ${won.toLocaleString()} ØB` : "NOTHING",
+      sub: `${card[out.winner].name} took it in ${out.log.length} rounds` });
     chat(`<b>${card[out.winner].name}</b> takes it after ${out.log.length} rounds. ` +
       `<b>${who}</b> ${won ? `collects ${won.toLocaleString()} ØB` : "collects nothing"}.`, "The Pit");
     return broadcastRefresh();
@@ -946,17 +971,15 @@ async function mintTip(uid, st) {
 let _crashLocal = null;
 
 function paintCrash() {
-  const el = _root?.querySelector(".crash");
-  const live = S()._live;
-  if (!el || !live || live.game !== "voidfall") return;
-  el.textContent = live.blown ? "GONE" : "×" + (live.mult || 1).toFixed(2);
-  el.classList.toggle("blown", !!live.blown);
+  if (!_root) return;
+  S().paintCrash(_root, S()._live);
 }
 
 function clientCrashOpen(msg) {
   const skew = msg.serverNow - Date.now();
   _crashLocal = { roundId: msg.roundId, startAtMs: msg.startAtMs, skew };
   const prev = S()._live;
+  S()._vfCurve = [];                      // a new run draws a new curve
   S()._live = {
     game: "voidfall", state: "open", mult: 1,
     in: !!(prev && prev.game === "voidfall" && prev.in), stake: prev?.stake || 0,

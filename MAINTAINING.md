@@ -136,6 +136,16 @@ a result — it plays one out. Three rules keep that honest and un-janky:
   to a complete stop in a background tab — the wheel would silently never turn. `void
   el.getBoundingClientRect()` then set the target.
 
+**Every render replaces the whole panel, so it must put the scroll position back.** `renderPanel()`
+reads `.sun-body`'s `scrollTop` before writing `innerHTML` and restores it after; without that,
+clicking anything at all bounced the reader to the top of the page. The fight log follows itself to
+the bottom while it is still narrating, and holds position once it is done.
+
+**Voidfall must never open a round over a running one.** It used to, which discarded the in-flight
+round wholesale — anyone still on it was never settled and their stake simply vanished. A round is
+only created when there is none, or when the existing one is well past its crash point (a reload
+can lose the blow-timer and would otherwise wedge the table shut forever).
+
 The settled wheel renders with `transition:none` and its final rotation inline, so the redraw that
 reveals the result does not re-spin it.
 

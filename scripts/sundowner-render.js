@@ -1707,6 +1707,11 @@
       body = (fn || renderWallet)(ctx);
     }
 
+    // Every render replaces the whole panel, which threw the scroll position
+    // away — clicking anything bounced you back to the top of the page.
+    const keepScroll = root.querySelector(".sun-body")?.scrollTop ?? 0;
+    const keepPbp = root.querySelector(".pbp")?.scrollTop ?? 0;
+
     root.innerHTML =
       `<div class="sun-top">` +
         `<div class="sun-brand">SUNDOWNER NET</div>` +
@@ -1725,6 +1730,11 @@
           `${t.icon} ${t.label}${t.id === "wire" && ctx.wireUnread ? ` <span class="dot">●</span>` : ""}</button>`).join("") +
       `</div>` +
       `<div class="sun-body">${body}</div>`;
+
+    const scroller = root.querySelector(".sun-body");
+    if (scroller && keepScroll) scroller.scrollTop = keepScroll;
+    const pbpBox = root.querySelector(".pbp");
+    if (pbpBox) pbpBox.scrollTop = S._revealDone ? keepPbp : pbpBox.scrollHeight;   // follow the fight
 
     bind(root, ctx);
   }
@@ -2038,7 +2048,7 @@
         `<text x="110" y="110" text-anchor="middle" dominant-baseline="central" font-size="26" ` +
           `fill="${settled ? (target === 0 ? "#c98bff" : "#38e1c4") : "#20465a"}" font-weight="700">` +
           `${settled ? (target === 0 ? "☒" : target) : "—"}</text>` +
-        `<path class="wheel-mark" d="M110,2 L118,18 L102,18 Z"/>` +
+        `<path class="wheel-mark" d="M101,2 L119,2 L110,19 Z"/>` +
       `</svg>` +
     `</div>`;
   }
@@ -2059,6 +2069,14 @@
     num.textContent = live.blown ? "GONE" : "×" + (m || 1).toFixed(2);
     box.classList.toggle("blown", !!live.blown);
     box.classList.toggle("hot", !live.blown && m >= 3);
+    // Keep the status label honest between re-renders: the run ticks far more
+    // often than the panel redraws, so it used to read BUY-IN OPEN throughout.
+    const tag = root.querySelector(".vf-tag");
+    if (tag) {
+      tag.textContent = live.blown ? "GONE"
+        : live.state === "run" ? (live.in ? "RUNNING — YOU ARE ON IT" : "RUNNING")
+        : live.state === "open" ? "BUY-IN OPEN" : "IDLE";
+    }
     if (live.state === "run" || live.blown) {
       S._vfCurve.push(m);
       if (S._vfCurve.length > 240) S._vfCurve.shift();
@@ -2250,6 +2268,8 @@
     if (g.id === "voidfall") {
       const mult = raw?.mult ?? 1;
       const blown = raw?.blown;
+      const running = raw?.state === "run" && !blown;
+      const locked = running && !raw?.in;      // a round is up but you are not in it
       return `<div class="sun-card accent${blown ? " shake" : ""}">${head}` +
         `<div class="vf${blown ? " blown" : mult >= 3 ? " hot" : ""}">` +
           `<div class="vf-tag">${raw?.state === "open" ? "BUY-IN OPEN" : blown ? "GONE" : raw?.state === "run" ? "RUNNING" : "IDLE"}</div>` +
@@ -2261,9 +2281,21 @@
           `<div class="vf-num">${blown ? "GONE" : "×" + mult.toFixed(2)}</div>` +
         `</div>` +
         (raw?.state === "open" ? `<div class="sun-note">Buy-in closes in <b>${raw.countdown ?? 0}</b>…</div>` : "") +
+        (raw?.cashedOb != null
+          ? `<div class="verdict win pop">TOOK ${fmtOb(raw.cashedOb)}` +
+            `<span class="sub">out at ×${(raw.outAt || 1).toFixed(2)}` +
+            `${blown ? ` — it blew at ×${mult.toFixed(2)}` : ", and it is still climbing"}</span></div>`
+          : blown && raw?.wasIn
+          ? `<div class="verdict lose pop">GONE<span class="sub">it blew at ×${mult.toFixed(2)} ` +
+            `with you still on it</span></div>`
+          : "") +
         (raw?.in
           ? `<div class="sun-row"><button class="sun-btn buy" data-act="play" data-g="voidfall" data-step="out">` +
             `TAKE ${fmtOb(Math.floor((raw.stake || 0) * mult))}</button></div>`
+          : locked
+          ? `<div class="sun-warn" style="text-align:center">${raw?.cashedOb != null
+              ? "You are out. The round runs on without you."
+              : "A round is already up. Wait for the next one."}</div>`
           : `${stakeBox(200, left, lim)}<div class="sun-row">` +
             `<button class="sun-btn hot" data-act="play" data-g="voidfall" data-step="join"${left <= 0 ? " disabled" : ""}>` +
             `${raw?.state === "open" ? "GET IN" : "OPEN A ROUND"}</button></div>`) +

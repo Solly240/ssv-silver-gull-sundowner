@@ -1004,10 +1004,18 @@ function clientCrashOpen(msg) {
 
 function clientCrashBlown(msg) {
   if (_tickTimer) { clearInterval(_tickTimer); _tickTimer = null; }
+  _crashLocal = null;
   const live = S()._live;
-  if (live && live.game === "voidfall") { live.blown = true; live.mult = msg.crashAt; live.in = false; }
+  if (live && live.game === "voidfall") {
+    live.wasIn = !!live.in;          // did it take you with it?
+    live.blown = true; live.mult = msg.crashAt; live.in = false;
+  }
   paintCrash();
-  setTimeout(() => { if (S()._live?.game === "voidfall" && S()._live.blown) { S()._live = null; refresh(); } }, 2600);
+  refresh();
+  // Long enough to read the verdict, then the table is clear for the next round.
+  setTimeout(() => {
+    if (S()._live?.game === "voidfall" && S()._live.blown) { S()._live = null; S()._vfCurve = []; refresh(); }
+  }, 5000);
 }
 
 async function gmCrashJoin(uid, stakeOb) {
@@ -1019,7 +1027,11 @@ async function gmCrashJoin(uid, stakeOb) {
   const sec = getSecret();
   let round = sec.crash;
   const now = Date.now();
-  if (!round || now > round.startAtMs) {
+  // A round whose blow-timer was lost (a reload, a crashed tab) would otherwise
+  // wedge the table shut forever, so reap anything well past its crash point.
+  const expired = round && now > round.startAtMs + S().crashMsFor(round.crashAt) + 8000;
+  if (expired) { round = null; sec.crash = null; }
+  if (!round) {
     round = {
       roundId: newId(), crashAt: S().crashPoint(rand()),
       startAtMs: now + 5000, players: {},
@@ -1033,7 +1045,12 @@ async function gmCrashJoin(uid, stakeOb) {
     _crashTimer = setTimeout(() => tx(() => gmCrashBlow(round.roundId)), blowIn);
     chat(`A Voidfall round opens. Five seconds.`, "The Cage");
   }
-  if (now > round.startAtMs) return notify(uid, "That round has already started.");
+  // Do NOT open a fresh round over a running one: it discarded the in-flight
+  // round wholesale, so anyone still on it was never settled and their stake
+  // simply vanished.
+  else if (now > round.startAtMs) {
+    return notify(uid, "A round is already up. Wait for this one to finish.");
+  }
   if (round.players[uid]) return notify(uid, "You are already in.");
   u.ob -= stakeOb; u.gambles = (u.gambles || 0) + 1;
   logLine(u, st.day, "Into a Voidfall round", -stakeOb);
@@ -1063,6 +1080,9 @@ async function gmCrashOut(uid) {
     logLine(u, st.day, "Left it too late in Voidfall", 0);
     await writeLedger(led);
     notify(uid, "Too late.", "warn");
+    const pub = { game: "voidfall", state: "run", in: false, stake: 0, mult, blown: true, wasIn: true };
+    if (uid === game.user.id) { S()._live = { ...S()._live, ...pub }; refresh(); }
+    else emit({ type: "live", live: pub }, [uid]);
   } else {
     const won = Math.floor(p.stake * mult);
     u.ob = (u.ob || 0) + won;
@@ -1070,7 +1090,8 @@ async function gmCrashOut(uid) {
     if (won >= 2000) await addHeat(led, uid, S().HEAT_EVENTS.bigWin, "took a large Voidfall run");
     await writeLedger(led);
     chat(`<b>${who}</b> gets out at <b>×${mult.toFixed(2)}</b> for ${won.toLocaleString()} ØB.`, "The Cage");
-    const pub = { game: "voidfall", state: "run", in: false, stake: 0, mult };
+    const pub = { game: "voidfall", state: "run", in: false, stake: 0, mult,
+                  cashedOb: won, outAt: mult };
     if (uid === game.user.id) { S()._live = { ...S()._live, ...pub }; refresh(); }
     else emit({ type: "live", live: pub }, [uid]);
   }
